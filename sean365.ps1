@@ -12,7 +12,7 @@ Find-MgGraphCommand looks up uri and give equivalent command
 find-mgGraphCommand -Uri 'https://graph.microsoft.com/v1.0/subscribedSkus'
 
 
-Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All","AuditLog.Read.All","Mail.Read"
+Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
 Get-MgEnvironment
 Get-MgContext
 

@@ -1,6 +1,7 @@
 #Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
 
-$domains = get-mgdomain
+$domains = get-mgdomain |where Id -NotLike "*.onmicrosoft.com"
+$MXrecords=@()
 foreach ($adomain in $domains){
     $domainid = $adomain.id
     $MXrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid | Where-Object recordType -eq "Mx"# ).AdditionalProperties.mailExchange
@@ -12,6 +13,7 @@ foreach ($adomain in $domains){
            # preference = $rec.AdditionalProperties.preference
         }
     }
- $arec
+ $mxrecords += $arec 
 }
-
+$MXrecords  |Sort-Object name |FL
+# .\get-kissmgMX.ps1 |Sort-Object name |fl

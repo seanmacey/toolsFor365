@@ -12,15 +12,23 @@ Find-MgGraphCommand looks up uri and give equivalent command
 find-mgGraphCommand -Uri 'https://graph.microsoft.com/v1.0/subscribedSkus'
 
 
-Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
+Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
 Get-MgEnvironment
 Get-MgContext
+
 
 
 
 https://learn.microsoft.com/en-us/graph/aad-advanced-queries?tabs=http
 #>
 
+
+<#
+extended search
+ Use the $filter query parameter with the ne operator. This request isn't supported by default because the ne operator is only supported in advanced queries. Therefore, you must add the ConsistencyLevel header set to eventual and use the $count=true query string.
+https://learn.microsoft.com/en-us/graph/aad-advanced-queries?tabs=http
+GET https://graph.microsoft.com/v1.0/users?$filter=accountEnabled ne true&$count=true ConsistencyLevel: eventual
+#>
 
 #get a list of  users that have EMAIL (even if blocked from signin)
 $result = Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/users?$select=displayName,userPrincipalName,Mail,proxyAddresses,assignedLicenses,accountEnabled,onPremisesDistinguishedName,onPremisesSamAccountName' -OutputType PSObject

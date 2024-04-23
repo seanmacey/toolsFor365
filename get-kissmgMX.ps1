@@ -1,5 +1,13 @@
 #Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
 
+
+# Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/domains?$select=id,supportedServices' -OutputType Json
+#Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/domains?$select=id,supportedServices' -OutputType Json
+
+#Invoke-MgGraphRequest#  -OutputType Json -Headers ConsistencyLevel:eventual
+
+#
+
 $domains = get-mgdomain |where Id -NotLike "*.onmicrosoft.com"
 $MXrecords=@()
 foreach ($adomain in $domains){

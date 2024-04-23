@@ -1,4 +1,4 @@
-#Connect-MgGraph -Scopes "User.Read.All","Group.ReadWrite.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
+#Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
 
 $domains = get-mgdomain |where Id -NotLike "*.onmicrosoft.com"
 $MXrecords=@()
@@ -8,8 +8,8 @@ foreach ($adomain in $domains){
     
     foreach ($rec in $MXrecs){
         $arec = [PSCustomObject]@{
-            Name = $domainid
-            MX = $rec.AdditionalProperties.mailExchange
+            Domain = $domainid
+            MailRelayHost = $rec.AdditionalProperties.mailExchange
            # preference = $rec.AdditionalProperties.preference
         }
     }

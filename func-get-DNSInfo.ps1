@@ -20,17 +20,17 @@ Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Ma
 
 #>
 function Get-DNSInfo {
+    [CmdletBinding()]
     param (
       
     )
     
- try{
+
+    write-verbose "about to try and get data from MgGraph "
    $domains = get-mgdomain | where-object Id -NotLike "*.onmicrosoft.com"
- }
- catch{
-    write-host " You need to connect Connect-MgGraph before running this script"
-    write-host "MgGraph modulke can be installed via install-module microsoft.mggraph"
- }
+
+
+
      foreach ($adomain in $domains) {
         # write-host "id = $($adomain.id)"
         $domainid = $adomain.id 
@@ -47,15 +47,31 @@ function Get-DNSInfo {
         $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
 
         $MXrecs = (Get-MgDomainServiceConfigurationRecord -DomainId $domainid | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-
+try{
         $M365DKIM = (Get-DkimSigningConfig -Identity $domainid).Enabled
+}
+catch{
+    $er = $error[0]
+    if ( $er.Exception.Message -like "*ManagementObjectNotFoundException*") {
+         $M365DKIM = "N/A as DKIM or Mail Not Configured" 
+          }
+
+    switch ($er.FullyQualifiedErrorId)
+    {
+        "CommandNotFoundException" { write-host "You need to Install-Module ExchangeOnlineManagement , then Connect-ExchangeOnline before you can get details about M365 based DKIM configuration" -ForegroundColor Red; break}
+       
+        default {
+          
+         }
+    }
+}
         $arec = [PSCustomObject]@{
             Name                 = $domainid
             M365_spf             = $spfs
-            M365_DKIM_Configured = $M365DKIM
             DNS_spf              = $spfDNS
             M365_mx              = $MXrecs
             DNS_mx               = $MXinDNS
+            M365_DKIM_Configured = $M365DKIM
             DNS_DKIM_SMX_1       = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)"
             DNS_DKIM_SMX_2       = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)"
             DNS_DKIM_M365_1      = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)"
@@ -78,4 +94,3 @@ write-host 'Connect-MgGraph -Scopes "Domain.Read.All" ' -ForegroundColor green
 write-host 'Connect-ExchangeOnline' -ForegroundColor green
 write-Host '. .\func-get-DNSinfo' -ForegroundColor green
 write-host 'get-DNSinfo' -ForegroundColor green
-

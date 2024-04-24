@@ -12,7 +12,7 @@ Find-MgGraphCommand looks up uri and give equivalent command
 find-mgGraphCommand -Uri 'https://graph.microsoft.com/v1.0/subscribedSkus'
 
 
-Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All"
+Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
 Get-MgEnvironment
 Get-MgContext
 
@@ -58,5 +58,25 @@ get-mgdomain |Select-Object id,isdefault,isverified,supportedServices
 get-mgdomain |Where-Object supportedServices -Contains Email  |Select-Object id,isdefault,isverified
 
 #get a list of subscriptions (Licenses)
-Get-MgSubscribedSku 
+#Directory.Read.All
+#Organization.Read.All
+
+Get-MgSubscribedSku
+CapabilityStatus
+SkuId
+SkuPartNumber
+ConsumedUnits
+AppliesTo            : User
+CapabilityStatus     : Enabled
+prepaidUNits.Enabled
+
+$lic = Get-MgSubscribedSku |Where-Object {($_.AppliesTo -eq "User") -and ($_.CapabilityStatus -eq "Enabled") } |Select-Object SkuPartNumber, @{n="Prepaid";e={$_.prepaidUNits.Enabled}}, ConsumedUnits, SkuId
+foreach ($l in $lic){
+    if ($l.SkuPartNumber -eq "O365_BUSINESS_ESSENTIALS") {$l.SkuPartNumber ='Microsoft 365 Business Basic'}
+    if ($l.SkuPartNumber -eq "O365_BUSINESS_PREMIUM") {$l.SkuPartNumber ='Microsoft 365 Business Standard'}
+    if ($l.SkuPartNumber -eq "EXCHANGESTANDARD") {$l.SkuPartNumber ='Exchange Online (Plan 1)'}
+    if ($l.SkuPartNumber -eq "STANDARDPACK") {$l.SkuPartNumber ='Office 361 E1'}
+}
+$lic
+
 

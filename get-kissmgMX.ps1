@@ -27,5 +27,5 @@ $MXrecords  |Sort-Object name |FL
 # .\get-kissmgMX.ps1 |Sort-Object name |fl
 
 
-Resolve-DnsName -Name imatec.co.nz -Type MX
-Resolve-DnsName -Name imatec.co.nz -Type TXT |Where-Object {$_.Strings -Like "*v=spf1*"}  
+#Resolve-DnsName -Name imatec.co.nz -Type MX
+#Resolve-DnsName -Name imatec.co.nz -Type TXT |Where-Object {$_.Strings -Like "*v=spf1*"}  

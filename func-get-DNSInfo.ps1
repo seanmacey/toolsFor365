@@ -19,7 +19,7 @@ Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Ma
 
 
 #>
-function Get-DNSInfo {
+function Get-mailDNSInfo {
     [CmdletBinding()]
     param (
       
@@ -27,13 +27,14 @@ function Get-DNSInfo {
     
 
     write-verbose "about to try and get data from MgGraph "
-   $domains = get-mgdomain | where-object Id -NotLike "*.onmicrosoft.com"
+    $domains = get-mgdomain  | where-object Id -NotLike "*.onmicrosoft.com"   #| Where-Object supportedServices -Contains Email
 
 
 
-     foreach ($adomain in $domains) {
+    foreach ($adomain in $domains) {
         # write-host "id = $($adomain.id)"
-        $domainid = $adomain.id 
+        $domainid = $adomain.id
+        $ConnfiguredForMail = $adomain.supportedServices -Contains "Email"
 
         $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
         $DNS2 = $DNSrecs | Where-Object recordType -eq "Txt"#) -and ($true))# ).AdditionalProperties.mailExchange
@@ -47,38 +48,41 @@ function Get-DNSInfo {
         $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
 
         $MXrecs = (Get-MgDomainServiceConfigurationRecord -DomainId $domainid | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-try{
-        $M365DKIM = (Get-DkimSigningConfig -Identity $domainid).Enabled
-}
-catch{
-    $er = $error[0]
-    if ( $er.Exception.Message -like "*ManagementObjectNotFoundException*") {
-         $M365DKIM = "N/A as DKIM or Mail Not Configured" 
-         continue
-          }
+       # [string]$M365DKIM2 = ""
+                try { 
+                      [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
 
-    switch ($er.FullyQualifiedErrorId)
-    {
-        "CommandNotFoundException" { write-host "You need to Install-Module ExchangeOnlineManagement , then Connect-ExchangeOnline before you can get details about M365 based DKIM configuration" -ForegroundColor Red}
-       
-        default {
-          
-         }
-    }
-}
+        }
+        catch {
+            $er = $error[0]
+   
+            if ($er.FullyQualifiedErrorId -eq "CommandNotFoundException"){
+                write-host "You need to Connect-ExchangeOnline (maybe first Install-Module ExchangeOnlineManagement ) before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+                $M365DKIM = "ERROR:  Connect-ExchangeOnline in order to see this parameter"
+                #continue
+            }
+        }
+       # if ($M365DKIM2) {$M365DKIM = $M365DKIM2}
+        if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
+
         $arec = [PSCustomObject]@{
             Name                 = $domainid
+            M365_COnfigured_For_Mail = $ConnfiguredForMail
             M365_spf             = $spfs
             DNS_spf              = $spfDNS
             M365_mx              = $MXrecs
             DNS_mx               = $MXinDNS
             M365_DKIM_Configured = $M365DKIM
-            DNS_DKIM_SMX_1       = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)"
-            DNS_DKIM_SMX_2       = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)"
-            DNS_DKIM_M365_1      = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)"
-            DNS_DKIM_M365_2      = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)"
+            DNS_DKIM_SMX_1       = "" 
+            DNS_DKIM_SMX_2       = ""
+            DNS_DKIM_M365_1      = ""
+            DNS_DKIM_M365_2      = ""
 
         }
+        if ($DKIMsmxinDNS1  ) {$arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)"}
+        if ($DKIMsmxinDNS2  ) {$arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)"}
+        if ($DKIMM365inDNS1 ) {$arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)"}
+        if ($DKIMM365inDNS2 ) {$arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)"}
         $arec
 
 

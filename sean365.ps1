@@ -12,12 +12,22 @@ Find-MgGraphCommand looks up uri and give equivalent command
 find-mgGraphCommand -Uri 'https://graph.microsoft.com/v1.0/subscribedSkus'
 
 
-Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All"
+Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All"
 Get-MgEnvironment
 Get-MgContext
 
+#get M365 suggested service configurations
+https://graph.microsoft.com/v1.0/domains/kissit.co.nz/serviceConfigurationRecords
 
 
+exchange powershell DKIM
+Import-Module ExchangeOnlineManagement
+Connect-ExchangeOnline -UserPrincipalName
+Get-DkimSigningConfig 
+PS C:\Users\SeanMacey> Get-DkimSigningConfig -Identity imatec.co.nz
+Domain       Enabled
+------       -------
+imatec.co.nz True
 
 https://learn.microsoft.com/en-us/graph/aad-advanced-queries?tabs=http
 #>

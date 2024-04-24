@@ -4,6 +4,9 @@ Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Ma
 
 #>
 Write-host 'ensure you Connect-MgGraph -Scopes "Domain.Read.All"  first'
+write-host 'MgGraph can be installed with install-module microsoft.mggraph, but takes while so make sure it is not already  installed before you try to install'
+write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DKIM)'
+write-host 'Exchange-online module can be installed with Install-Module  ExchangeOnlineManagement '
 $domains = get-mgdomain |where-object Id -NotLike "*.onmicrosoft.com"
 foreach ($adomain in $domains){
    # write-host "id = $($adomain.id)"
@@ -22,10 +25,11 @@ foreach ($adomain in $domains){
 
     $MXrecs = (Get-MgDomainServiceConfigurationRecord -DomainId $domainid | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
 
-
+    $M365DKIM =(Get-DkimSigningConfig -Identity $domainid).Enabled
     $arec = [PSCustomObject]@{
         Name = $domainid
         M365_spf = $spfs
+        M365_DKIM_Configured = $M365DKIM
         DNS_spf = $spfDNS
         M365_mx = $MXrecs
         DNS_mx = $MXinDNS

@@ -25,10 +25,10 @@ foreach ($adomain in $domains){
 
     $arec = [PSCustomObject]@{
         Name = $domainid
-        M365spf = $spfs
-        DNSspf = $spfDNS
-        M365mx = $MXrecs
-        DNSmx = $MXinDNS
+        M365_spf = $spfs
+        DNS_spf = $spfDNS
+        M365_mx = $MXrecs
+        DNS_mx = $MXinDNS
         DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)"
         DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)"
         DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)"

@@ -54,11 +54,12 @@ catch{
     $er = $error[0]
     if ( $er.Exception.Message -like "*ManagementObjectNotFoundException*") {
          $M365DKIM = "N/A as DKIM or Mail Not Configured" 
+         continue
           }
 
     switch ($er.FullyQualifiedErrorId)
     {
-        "CommandNotFoundException" { write-host "You need to Install-Module ExchangeOnlineManagement , then Connect-ExchangeOnline before you can get details about M365 based DKIM configuration" -ForegroundColor Red; break}
+        "CommandNotFoundException" { write-host "You need to Install-Module ExchangeOnlineManagement , then Connect-ExchangeOnline before you can get details about M365 based DKIM configuration" -ForegroundColor Red}
        
         default {
           

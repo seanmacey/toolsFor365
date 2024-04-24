@@ -24,9 +24,14 @@ function Get-DNSInfo {
       
     )
     
-
-    $domains = get-mgdomain | where-object Id -NotLike "*.onmicrosoft.com"
-    foreach ($adomain in $domains) {
+ try{
+   $domains = get-mgdomain | where-object Id -NotLike "*.onmicrosoft.com"
+ }
+ catch{
+    write-host " You need to connect Connect-MgGraph before running this script"
+    write-host "MgGraph modulke can be installed via install-module microsoft.mggraph"
+ }
+     foreach ($adomain in $domains) {
         # write-host "id = $($adomain.id)"
         $domainid = $adomain.id 
 
@@ -63,12 +68,14 @@ function Get-DNSInfo {
     }
 }
 
-Write-host 'ensure you Connect-MgGraph -Scopes "Domain.Read.All"  -ClientId   first'
+Write-host 'ensure you Connect-MgGraph   first'
 write-host 'MgGraph can be installed with install-module microsoft.mggraph, but takes while so make sure it is not already  installed before you try to install'
 write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DKIM)'
 write-host 'Exchange-online module can be installed with Install-Module  ExchangeOnlineManagement '
 
-write-Host 'then instead of running this script as you did'
-write-Host '   load it into memory using  . .\func-get-DNSinfo'
-write-host '   use the command:    get-DNSinfo'
+write-Host 'then instead of running this script as you did load it, then run the function'
+write-host 'Connect-MgGraph -Scopes "Domain.Read.All" ' -ForegroundColor green
+write-host 'Connect-ExchangeOnline' -ForegroundColor green
+write-Host '. .\func-get-DNSinfo' -ForegroundColor green
+write-host 'get-DNSinfo' -ForegroundColor green
 

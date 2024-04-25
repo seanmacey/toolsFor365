@@ -230,6 +230,9 @@ function  Get-365user {
             }       
         }
         $users
+        if (!$ConnectedtoExchange){
+            write-host "if you want to see 365 Mailbox statistics, then rerun this AFTER first connect-exchangeOnline" -ForegroundColor green
+        }
     }
 }
 

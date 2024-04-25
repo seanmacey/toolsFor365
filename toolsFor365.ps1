@@ -42,7 +42,7 @@ function Get-365DNSInfo {
         $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
         #$DNS2 = $DNSrecs | Where-Object recordType -eq "Txt"  #) -and ($true))# ).AdditionalProperties.mailExchange
         $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
-        $MXrecs = ($DNSrecs| Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
+        $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
 
         $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
  
@@ -142,6 +142,9 @@ Connect-MgGraph -Scopes "User.Read.All","AuditLog.Read.All"
 Or try
 Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
 
+If you want to see mail statistics - then also
+connect-exchangeonline
+
 .PARAMETER userPrincipalName
 allows you to retrieve data about just ONE user
 
@@ -162,16 +165,20 @@ function  Get-365user {
     param(
         [string]$userPrincipalName
     )
+
+    $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
+
+
     $filterfor = ""
     if ($userPrincipalName) {
         $filterfor = '&$filter=userPrincipalName eq '
         $filterfor = "$filterfor'$userPrincipalName'"
     }
     $needsB2C = $null
-     $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
+    $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
         
     try {
-         $result = Invoke-MgGraphRequest -Method GET "$basicpoll,signInActivity$filterfor" -OutputType PSObject
+        $result = Invoke-MgGraphRequest -Method GET "$basicpoll,signInActivity$filterfor" -OutputType PSObject
         $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "No errors getting this information from M365"
 
     }
@@ -186,11 +193,16 @@ function  Get-365user {
     }
     if ($result) {
         $users = $result.value
+        if ($ConnectedtoExchange ){
+            $users |Add-Member -NotePropertyName "MailSize" -NotePropertyValue ""
+            $users |Add-Member -NotePropertyName "MailSizeLimit" -NotePropertyValue ""
+            $users |Add-Member -NotePropertyName "MailBoxType" -NotePropertyValue ""
+            $users |Add-Member -NotePropertyName "LastUserMailAction" -NotePropertyValue ""
+        }
         $lic = Get-365licenses
- 
         foreach ($user in $users) {
-           $userskus = @()
-           $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json
+            $userskus = @()
+            $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json
 
             foreach ($userlic in $user.licenseAssignmentStates ) {
                 $alic = ($lic | Where-Object skuid -eq $userlic.skuid).SkuPartNumber #?? $userlic.skuid
@@ -200,10 +212,23 @@ function  Get-365user {
             }
             $user.licenseAssignmentStates = $userskus | ConvertTo-Json
 
-            if ($user.signInActivity) { $user.signInActivity = $user.signInActivity |Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime |ConvertTo-Json}
+            if ($user.signInActivity) { $user.signInActivity = $user.signInActivity | Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime | ConvertTo-Json }
+            write-verbose " this next section checks exchangeonline"
+            if ($ConnectedtoExchange -and $user.mail) {
+                     $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
+                    if ($maildetail.MailboxTypeDetail){
+                    $user.MailSize = $maildetail.TotalItemSize
+                    $user.MailSizeLimit= $maildetail.SystemMessageSizeShutoffQuota
+                    $user.MailBoxType = $maildetail.MailboxTypeDetail
+                    $user.LastUserMailAction = $maildetail.LastUserActionTime
+                    }
+                    else {
+                        <# Action when all if and elseif conditions are false #>
+                        $user.mail =""
+                        $user.proxyAddresses ="" 
+                    }
+            }       
         }
-
-        
         $users
     }
 }
@@ -228,11 +253,16 @@ get-365Whoami
 
 #>
 function get-365Whoami {
+    [CmdletBinding()]
+    param(
+        [switch]$DontElaborate
+    )
     $uExchange = ""
     $uAZure = ""
     $uMgGraph = ""
+    
     try {
-        $result = Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/me?$select=userPrincipalName' -OutputType PSObject
+        $result = Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/me?$select=userPrincipalName' -OutputType PSObject 
         $uMgGraph = $result.userPrincipalName     
     }
     catch { }
@@ -253,14 +283,13 @@ function get-365Whoami {
         MgGraph       = $uMgGraph
         ExhangeOnline = $uExchange
         AZureAD       = $uAzure
-     }
+    }
 
-     if ($uMgGraph){
-        $mgCOntext =Get-MgContext
+    if ($uMgGraph -and ($DontElaborate -ne $true)) {
+        $mgCOntext = Get-MgContext
         write-host "MgGraph Scopes are"
         write-host "$($mgCOntext.scopes |ConvertTo-Json)"
-
-     }
+    }
 }
 
 <#
@@ -286,8 +315,8 @@ function get-365Domains {
         
     )
     #get list of domains in M365
-   $domains = get-mgdomain |Select-Object id,isdefault,isverified,supportedServices
-   return $domains
+    $domains = get-mgdomain | Select-Object id, isdefault, isverified, supportedServices
+    return $domains
 
 }
 

@@ -1,0 +1,63 @@
+"id","displayName","userPrincipalName","mail","proxyAddresses","accountEnabled","lastPasswordChangeDateTime","onPremisesSyncEnabled","onPremisesDomainName","onPremisesDistinguishedName","onPremisesSamAccountName","userType","licenseAssignmentStates","signInActivity","get_errors"
+"b3200803-f6b7-4a8d-a745-4e4db3692ba1","Accounts@cruisetourstauranga.co.nz","accounts@cruisetourstauranga.co.nz","accounts@cruisetourstauranga.co.nz","[
+  ""accounts1209@shoretripsandtours.onmicrosoft.com"",
+  ""accounts@cruisetourstauranga.co.nz""
+]","True","15/09/2019 9:03:24 pm",,,,,"Member",,"","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"c84f1802-2b8b-4227-b1e4-5dc42d03ea7c","Accounts @ MC Tours","accounts@mctours.co.nz","accounts@mctours.co.nz","[
+  ""accounts7069@shoretripsandtours.onmicrosoft.com"",
+  ""accounts@mctours.co.nz""
+]","True","15/09/2022 3:28:43 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"93c79c4c-ef85-4c45-b785-61b8fcd44091","Accounts @ Shore Trips","accounts@shoretrips.co.nz","accounts@shoretrips.co.nz","[
+  ""accounts@shoretripsandtours.onmicrosoft.com"",
+  ""accounts@shoretrips.co.nz""
+]","True","15/09/2022 3:12:50 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"6688e3e8-8b7f-411a-9529-8e64089209d6","Ian Holroyd","admin@shoretripsandtours.onmicrosoft.com",,,"True","26/10/2018 12:45:57 am",,,,,"Member",,"","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"9f236692-4aea-4bfb-adff-0ce19d7c25e8","Bookings","Bookings@shoretrips.co.nz","Bookings@shoretrips.co.nz","""Bookings@shoretrips.co.nz""","True","15/09/2022 1:50:13 am",,,,,"Member","""Microsoft 365 Business Standard""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"a01ca894-99a0-4260-b8fd-587bd2d75bf3","Ian Holroyd - MC Tours","Ian@mctours.co.nz","Ian@mctours.co.nz","[
+  ""Ian@shoretripsandtours.onmicrosoft.com"",
+  ""Ian@mctours.co.nz""
+]","True","3/08/2018 12:22:38 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"4a000daa-23a2-4aaf-b5c4-bcb4e7376a5c","Ian Holroyd - Shore Trips","Ian@shoretrips.co.nz","Ian@shoretrips.co.nz","""Ian@shoretrips.co.nz""","True","8/08/2018 4:33:45 am",,,,,"Member","[
+  ""FLOW_FREE"",
+  ""Microsoft 365 Business Standard""
+]","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"0b322813-4f05-4bd6-9034-6512e4aa3628","Baylimos Info","info@baylimos.co.nz","info@baylimos.co.nz","[
+  ""info4210@shoretripsandtours.onmicrosoft.com"",
+  ""info@baylimos.co.nz""
+]","True","15/09/2022 2:01:26 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"88bb5527-f553-4252-9ab3-946bf2815e75","Info@cruisetourstauranga.co.nz","info@cruisetourstauranga.co.nz","info@cruisetourstauranga.co.nz","[
+  ""info3839@shoretripsandtours.onmicrosoft.com"",
+  ""info@cruisetourstauranga.co.nz""
+]","True","15/09/2022 3:55:24 am",,,,,"Member","""Microsoft 365 Business Standard""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"78cf637e-a2cd-4e89-80d9-5eb3b34d0d31","info","info@daytrippers.co.nz","info@daytrippers.co.nz","[
+  ""info@daytrippers.co.nz"",
+  ""miles@daytrippers.co.nz""
+]","True","15/09/2022 1:43:42 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"89c43bee-b4bb-4695-b3aa-bea9a76603d6","Hinterland Tours","info@hinterlandtours.co.nz","info@hinterlandtours.co.nz","[
+  ""info9550@shoretripsandtours.onmicrosoft.com"",
+  ""info@hinterlandtours.co.nz""
+]","True","20/07/2020 8:43:47 pm",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"5bd805b1-ef6f-4c41-b875-1a93ef16f0b5","Info @ MC Tours","info@mctours.co.nz","info@mctours.co.nz","[
+  ""info@shoretripsandtours.onmicrosoft.com"",
+  ""info@mctours.co.nz""
+]","True","15/09/2022 3:23:16 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"59ef6d7f-cd77-4611-ad3a-661536500591","Info @ Shore Trips","info@shoretrips.co.nz","info@shoretrips.co.nz","""info@shoretrips.co.nz""","True","15/09/2022 3:26:03 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"2f4ac0f3-d156-4976-964c-858360995a18","info@tasteofplenty.co.nz","info@tasteofplenty.co.nz","info@tasteofplenty.co.nz","[
+  ""info9587@shoretripsandtours.onmicrosoft.com"",
+  ""info@tasteofplenty.co.nz""
+]","True","15/09/2022 3:57:11 am",,,,,"Member","""Microsoft 365 Business Standard""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"a0670e8f-9f04-4b3c-b4da-5c7659ee61b5","Jacqui","Jacqui@mctours.co.nz","Jacqui@mctours.co.nz","""Jacqui@mctours.co.nz""","True","13/08/2018 9:59:33 pm",,,,,"Member","[
+  ""Exchange Online (Plan 1)"",
+  ""710779e8-3d4a-4c88-adb9-386c958d1fdf""
+]","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"694afd87-a990-4e11-909e-8fea350e2d38","Kim Scanlen - MC Tours","Kim@mctours.co.nz","Kim@mctours.co.nz","[
+  ""Kim1882@shoretripsandtours.onmicrosoft.com"",
+  ""Kim@mctours.co.nz""
+]","True","3/08/2018 12:23:16 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"02585776-bd34-4645-8e35-007a7161d958","Kim Scanlen - Shore Trips","Kim@shoretrips.co.nz","Kim@shoretrips.co.nz","""Kim@shoretrips.co.nz""","True","1/08/2018 4:02:31 am",,,,,"Member","""Exchange Online (Plan 1)""","","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"6abc5664-ce07-420b-ab89-d73263e024da","Nigel","Nigel@shoretrips.co.nz","Nigel@shoretrips.co.nz","[
+  ""Nigel7291@shoretripsandtours.onmicrosoft.com"",
+  ""Nigel@shoretrips.co.nz""
+]","False","9/07/2020 10:02:04 pm",,,,,"Member",,"","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"b01bd55f-d663-4234-98a7-ad03259d9423","nigel","nigel@shoretripsandtours.onmicrosoft.com","nigel@shoretripsandtours.onmicrosoft.com","""nigel@shoretripsandtours.onmicrosoft.com""","False","23/07/2018 2:35:54 am",,,,,"Member",,"","Can not get signInActivity, since tenant is neither B2C or has premium license"
+"4a1c4c14-cf48-449e-9058-022f7a1beb67","Operations","Operations@shoretrips.co.nz","Operations@shoretrips.co.nz","""Operations@shoretrips.co.nz""","True","1/08/2018 4:03:37 am",,,,,"Member","""Microsoft 365 Business Standard""","","Can not get signInActivity, since tenant is neither B2C or has premium license"

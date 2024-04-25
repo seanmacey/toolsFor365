@@ -251,6 +251,13 @@ function get-365Whoami {
         ExhangeOnline = $uExchange
         AZureAD       = $uAzure
      }
+
+     if ($uMgGraph){
+        $mgCOntext =Get-MgContext
+        write-host "MgGraph Scopes are"
+        write-host "$($mgCOntext.scopes |ConvertTo-Json)"
+
+     }
 }
 
 <#
@@ -287,7 +294,7 @@ write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DK
 write-host 'Exchange-online module can be installed with Install-Module  ExchangeOnlineManagement '
 
 write-Host 'then instead of running this script as you did load it, then run the function'
-write-host 'Connect-MgGraph -Scopes "Domain.Read.All","Directory.Read.All","Organization.Read.All","User.Read.All","AuditLog.Read.All"  ' -ForegroundColor green
+write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
 write-host 'Connect-ExchangeOnline' -ForegroundColor green
 write-Host '. .\func-get-DNSinfo' -ForegroundColor green
 write-host 'get-365DNSInfo' -ForegroundColor green

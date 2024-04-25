@@ -13,7 +13,8 @@
     requires at least
     Connect-MgGraph -Scopes "AuditLog.Read.All","Mail.Read","Domain.Read.All"
    
-    but maybe Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All
+    or try
+    Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
 .EXAMPLE
 $i = Get-365DNSInfo 
 Get-365DNSInfo |fl
@@ -138,6 +139,8 @@ Collections such as Licenses, email-alias' signInActivity are in JSON format (so
 
 Requires at least the following rights
 Connect-MgGraph -Scopes "User.Read.All","AuditLog.Read.All"
+Or try
+Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
 
 .PARAMETER userPrincipalName
 allows you to retrieve data about just ONE user
@@ -269,7 +272,7 @@ Gets a sumarised list of domains
     requires at least
 
     Connect-MgGraph -Scopes "Domain.Read.All"
-    or try Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All
+    or try Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
 
 .EXAMPLE
 get-365Domains 

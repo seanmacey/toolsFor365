@@ -26,7 +26,8 @@ function Get-365DNSInfo {
     param (
         $Domain 
     )
- 
+    Connect-365
+
     write-verbose "about to try and get data from MgGraph "
     if ($Domain) {
         $domains = get-mgdomain  | where-object Id -eq $domain
@@ -113,7 +114,7 @@ function  Get-365licenses {
     param (
        
     )
-    
+    Connect-365 
 
 
     $lic = Get-MgSubscribedSku | Where-Object { ($_.AppliesTo -eq "User") -and ($_.CapabilityStatus -eq "Enabled") } | Select-Object SkuPartNumber, @{n = "Prepaid"; e = { $_.prepaidUNits.Enabled } }, ConsumedUnits, SkuId
@@ -163,17 +164,31 @@ General notes
 function  Get-365user {
     [CmdletBinding()]
     param(
-        [string]$userPrincipalName
+        [string]$userPrincipalName,
+        [string]$userid,
+        [switch]$basicInfoOnly,
+        [switch]$ShowMFA,
+        [switch]$showMailBox
     )
-
-    $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
-
-
+    Connect-365 
     $filterfor = ""
     if ($userPrincipalName) {
         $filterfor = '&$filter=userPrincipalName eq '
         $filterfor = "$filterfor'$userPrincipalName'"
     }
+    if ($userid) {
+        $filterfor = '&$filter=id eq '
+        $filterfor = "$filterfor'$userid'"
+    }
+
+    if ($basicInfoOnly){
+        $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,accountEnabled,onPremisesSamAccountName,userType'
+        $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
+        $result.value
+        return
+    }
+
+   # $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
     $needsB2C = $null
     $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
         
@@ -184,7 +199,7 @@ function  Get-365user {
     }
     catch {
         $er = $error[0]
-        $needsB2C = $er.ErrorDetails -like "*Neither tenant is B2C or tenant doesn't have premium license*"
+        $needsB2C = $er.ErrorDetails -like "*Neither tenant is B2C or tenant has premium license*"
         if ($needsB2C) {
             $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
             $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
@@ -193,16 +208,27 @@ function  Get-365user {
     }
     if ($result) {
         $users = $result.value
-        if ($ConnectedtoExchange ){
+        if ($showMailBox){
+        if (!((get-365Whoami -DontElaborate).ExhangeOnline))
+        {
+            Connect-ExchangeOnline
+        }
+                  
+       
             $users |Add-Member -NotePropertyName "MailSize" -NotePropertyValue ""
             $users |Add-Member -NotePropertyName "MailSizeLimit" -NotePropertyValue ""
             $users |Add-Member -NotePropertyName "MailBoxType" -NotePropertyValue ""
             $users |Add-Member -NotePropertyName "LastUserMailAction" -NotePropertyValue ""
+
+    }
+        if ($ShowMFA)
+        {
+            $users |Add-Member -NotePropertyName "MFAInfo" -NotePropertyValue ""
         }
         $lic = Get-365licenses
         foreach ($user in $users) {
             $userskus = @()
-            $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json
+            $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json -Compress
 
             foreach ($userlic in $user.licenseAssignmentStates ) {
                 $alic = ($lic | Where-Object skuid -eq $userlic.skuid).SkuPartNumber #?? $userlic.skuid
@@ -210,11 +236,12 @@ function  Get-365user {
                 if ($userlic.state -ne "Active") { $alic = "$alic <$($userlic.state)>" }
                 $userskus += $alic
             }
-            $user.licenseAssignmentStates = $userskus | ConvertTo-Json
+            $user.licenseAssignmentStates = $userskus | ConvertTo-Json -Compress
 
-            if ($user.signInActivity) { $user.signInActivity = $user.signInActivity | Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime | ConvertTo-Json }
+            if ($user.signInActivity) { $user.signInActivity = $user.signInActivity | Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime | ConvertTo-Json -Compress}
             write-verbose " this next section checks exchangeonline"
-            if ($ConnectedtoExchange -and $user.mail) {
+            
+            if ($showMailBox -and $user.mail ) {
                      $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
                     if ($maildetail.MailboxTypeDetail){
                     $user.MailSize = $maildetail.TotalItemSize
@@ -228,11 +255,14 @@ function  Get-365user {
                         $user.proxyAddresses ="" 
                     }
             }       
-        }
-        $users
-        if (!$ConnectedtoExchange){
-            write-host "if you want to see 365 Mailbox statistics, then rerun this AFTER first connect-exchangeOnline" -ForegroundColor green
-        }
+        if ($ShowMFA)
+        {
+            $user.MFAInfo = Get-365UserMFAMethods -userId $user.id |ConvertTo-Json -Compress
+        } 
+        $user
+    }
+
+       # $users
     }
 }
 
@@ -260,16 +290,21 @@ function get-365Whoami {
     param(
         [switch]$DontElaborate
     )
+
+   # Connect-365 
     $uExchange = ""
     $uAZure = ""
     $uMgGraph = ""
     
     try {
+        Write-Verbose "about to check login for MgGraph"
         $result = Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/me?$select=userPrincipalName' -OutputType PSObject 
         $uMgGraph = $result.userPrincipalName     
     }
     catch { }
     try {
+        Write-Verbose "about to check login for ExchangeOnline"
+
         $result = Get-ConnectionInformation -ErrorAction SilentlyContinue
         if ($result) {
             $uExchange = "$($result.UserPrincipalName)  <$($result.State)>"
@@ -277,6 +312,8 @@ function get-365Whoami {
     }
     catch { }
     try {
+        Write-Verbose "about to check login for ADOnline"
+
         $result = Get-AzureADCurrentSessionInfo
         $uAzure = $result.Account.ID
     }
@@ -286,12 +323,13 @@ function get-365Whoami {
         MgGraph       = $uMgGraph
         ExhangeOnline = $uExchange
         AZureAD       = $uAzure
+        MSoline ="Not checked"
     }
 
     if ($uMgGraph -and ($DontElaborate -ne $true)) {
         $mgCOntext = Get-MgContext
         write-host "MgGraph Scopes are"
-        write-host "$($mgCOntext.scopes |ConvertTo-Json)"
+        write-host "$($mgCOntext.scopes |ConvertTo-Json -Compress)"
     }
 }
 
@@ -317,23 +355,181 @@ function get-365Domains {
     param (
         
     )
+    Connect-365 
     #get list of domains in M365
     $domains = get-mgdomain | Select-Object id, isdefault, isverified, supportedServices
     return $domains
 
 }
 
+
+Function Connect-365 {
+    [CmdletBinding()]
+    param()
+    # Check if MS Graph module is installed
+    if (-not(Get-InstalledModule Microsoft.Graph)) { 
+      Write-Host "Microsoft Graph module not found" -ForegroundColor Black -BackgroundColor Yellow
+      $install = Read-Host "Do you want to install the Microsoft Graph Module?"
+  
+      if ($install -match "[yY]") {
+        Install-Module Microsoft.Graph -Repository PSGallery -Scope CurrentUser -AllowClobber -Force
+      }else{
+        Write-Host "Microsoft Graph module is required." -ForegroundColor Black -BackgroundColor Yellow
+        exit
+      } 
+    }
+  
+    $connections =  (get-365Whoami -DontElaborate).MgGraph
+    # Connect to Graph
+    if ($connections){
+        write-verbose "audit: you are connected to MgGraph with userPrincipleName = $connections"
+        $mgCOntext = Get-MgContext 
+        write-verbose "Scopes are $($mgCOntext.scopes |ConvertTo-Json -Compress)"
+        return
+    }
+
+    Write-Host "Connecting to Microsoft Graph" -ForegroundColor Cyan
+    Connect-MgGraph -Scopes "User.Read.All,Group.Read.All,AuditLog.Read.All,Mail.Read,Domain.Read.All,RoleManagement.Read.All,Policy.Read.All,Directory.Read.All,Organization.Read.All,UserAuthenticationMethod.Read.All"  -NoWelcome
+  }
+  
+function Disconnect-365{
+    disconnect-MgGraph
+}
+
+  Function Get-365Admins{
+    <#
+    .SYNOPSIS
+      Get all user with an Admin role
+    #>
+    process{
+       Connect-365 
+      $admins = Get-MgDirectoryRole | Select-Object DisplayName, Id | 
+                  ForEach-Object{$role = $_.DisplayName; Get-MgDirectoryRoleMember -DirectoryRoleId $_.id | 
+                    Where-Object {$_.AdditionalProperties."@odata.type" -eq "#microsoft.graph.user"} | 
+                    ForEach-Object {Get-365User -userId $_.id -basicInfoOnly}
+                  } | Where-Object {$_.AccountEnabled -eq "True"} |
+                  Select-Object @{Name="Role"; Expression = {$role}}, DisplayName, UserPrincipalName, Mail, Id | Sort-Object -Property Mail -Unique
+      
+      return $admins
+    }
+  }
+
+
+  Function Get-365UserMFAMethods {
+    <#
+      .SYNOPSIS
+        Get the MFA status of the user
+    #>
+    [CmdletBinding()]
+    param(
+      [Parameter(Mandatory = $true)] $userId
+    )
+    begin{
+        Connect-365
+write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
+
+    }
+    process{
+      # Get MFA details for each user
+      #[array]
+      [array]$mfaData = Get-MgUserAuthenticationMethod -UserId $userId
+      if (!$mfaData) {return}
+  
+      # Create MFA details object
+     $mfaMethods  = [PSCustomObject][Ordered]@{
+
+        status            = ""
+        authApp           = ""
+        phoneAuth         = ""
+        fido              = ""
+        helloForBusiness  = ""
+        helloForBusinessCount = 0
+        emailAuth         = ""
+        tempPass          = ""
+        passwordLess      = ""
+        softwareAuth      = ""
+        authDevice        = ""
+        authPhoneNr       = ""
+        SSPREmail         = ""
+        OtherInfo =""
+        
+      }
+  
+      ForEach ($method in $mfaData) {
+          Switch ($method.AdditionalProperties["@odata.type"]) {
+            "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod"  { 
+              # Microsoft Authenticator App
+              $mfaMethods.authApp = $true
+              $mfaMethods.authDevice += "$($method.AdditionalProperties["displayName"]),"
+              $mfaMethods.status = "enabled"
+            } 
+            "#microsoft.graph.phoneAuthenticationMethod"                  { 
+              # Phone authentication
+              $mfaMethods.phoneAuth = $true
+              $mfaMethods.authPhoneNr = $method.AdditionalProperties["phoneType", "phoneNumber"] -join ' '
+              $mfaMethods.status = "enabled"
+            } 
+            "#microsoft.graph.fido2AuthenticationMethod"                   { 
+              # FIDO2 key
+              $mfaMethods.fido = $true
+              $mfaMethods.otherInfo += "Fido-Model:$($method.AdditionalProperties["model"]),"
+              $mfaMethods.status = "enabled"
+            } 
+            "#microsoft.graph.passwordAuthenticationMethod"                { 
+              # Password
+              # When only the password is set, then MFA is disabled.
+              if ($mfaMethods.status -ne "enabled") {$mfaMethods.status = "disabled"}
+            }
+            "#microsoft.graph.windowsHelloForBusinessAuthenticationMethod" { 
+              # Windows Hello
+              $mfaMethods.helloForBusiness = $true
+              $mfaMethods.otherInfo += "Hello-Device:$($method.AdditionalProperties["displayName"]),"
+              $mfaMethods.status = "enabled"
+              $mfaMethods.helloForBusinessCount++
+            } 
+            "#microsoft.graph.emailAuthenticationMethod"                   { 
+              # Email Authentication
+              $mfaMethods.emailAuth =  $true
+              $mfaMethods.SSPREmail = $method.AdditionalProperties["emailAddress"] 
+              $mfaMethods.status = "enabled"
+            }               
+            "microsoft.graph.temporaryAccessPassAuthenticationMethod"    { 
+              # Temporary Access pass
+              $mfaMethods.tempPass = $true
+              $mfaMethods.otherInfo += "TempPass-LifeTime:$($method.AdditionalProperties["lifetimeInMinutes"]),"
+              $mfaMethods.status = "enabled"
+            }
+            "#microsoft.graph.passwordlessMicrosoftAuthenticatorAuthenticationMethod" { 
+              # Passwordless
+              $mfaMethods.passwordLess = $true
+              $mfaMethods.otherInfo +=  "passwordless-devicve:$($method.AdditionalProperties["displayName"]),"
+              $mfaMethods.status = "enabled"
+            }
+            "#microsoft.graph.softwareOathAuthenticationMethod" { 
+              # ThirdPartyAuthenticator
+              $mfaMethods.softwareAuth = $true
+              $mfaMethods.status = "enabled"
+            }
+          }
+      }
+      $mfaMethods.authDevice = $mfaMethods.authDevice.trim(","," ")
+      $mfaMethods.otherInfo = $mfaMethods.otherInfo.trim(","," ")
+      Return $mfaMethods
+    }
+  }
+
 Write-host 'ensure you Connect-MgGraph   first'
 write-host 'MgGraph can be installed with install-module microsoft.mggraph, but takes while so make sure it is not already  installed before you try to install'
 write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DKIM)'
 write-host 'Exchange-online module can be installed with Install-Module  ExchangeOnlineManagement '
 
-write-Host 'then instead of running this script as you did load it, then run the function'
-write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
-write-host 'Connect-ExchangeOnline' -ForegroundColor green
-write-Host '. .\func-get-DNSinfo' -ForegroundColor green
+write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
+#write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
+#write-host 'Connect-ExchangeOnline' -ForegroundColor green
+write-Host '. .\toolsFor365' -ForegroundColor green
 write-host 'get-365DNSInfo' -ForegroundColor green
 write-host 'get-365Licenses' -ForegroundColor green
 write-host 'get-365User' -ForegroundColor green
 write-host 'get-365whoami' -ForegroundColor green
 write-host 'get-365Domains' -ForegroundColor green
+write-host 'get-365MFAMethods' -ForegroundColor green

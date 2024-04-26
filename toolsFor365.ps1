@@ -389,7 +389,7 @@ Function Connect-365 {
     }
 
     Write-Host "Connecting to Microsoft Graph" -ForegroundColor Cyan
-    Connect-MgGraph -Scopes "User.Read.All,Group.Read.All,AuditLog.Read.All,Mail.Read,Domain.Read.All,RoleManagement.Read.All,Policy.Read.All,Directory.Read.All,Organization.Read.All,UserAuthenticationMethod.Read.All"  -NoWelcome
+    Connect-MgGraph -Scopes "User.Read.All,Group.Read.All,AuditLog.Read.All,Mail.Read,Domain.Read.All,RoleManagement.Read.All,Policy.Read.All,Directory.Read.All,Organization.Read.All,UserAuthenticationMethod.Read.All,AuthenticationContext.Read.All"  -NoWelcome
   }
   
 function Disconnect-365{
@@ -518,6 +518,8 @@ write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
     }
   }
 
+
+
 Write-host 'ensure you Connect-MgGraph   first'
 write-host 'MgGraph can be installed with install-module microsoft.mggraph, but takes while so make sure it is not already  installed before you try to install'
 write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DKIM)'
@@ -533,3 +535,6 @@ write-host 'get-365User' -ForegroundColor green
 write-host 'get-365whoami' -ForegroundColor green
 write-host 'get-365Domains' -ForegroundColor green
 write-host 'get-365MFAMethods' -ForegroundColor green
+
+#beta methods, not yet avail in mggraph prod
+#https://graph.microsoft.com/beta/me/authentication/signInPreferences

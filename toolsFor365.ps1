@@ -27,6 +27,7 @@ function Get-365DNSInfo {
         $Domain 
     )
     Connect-365
+   # if (!(get-365whoami).)
 
     write-verbose "about to try and get data from MgGraph "
     if ($Domain) {
@@ -35,13 +36,29 @@ function Get-365DNSInfo {
     else {
         $domains = get-mgdomain  | where-object Id -NotLike "*.onmicrosoft.com"   #| Where-Object supportedServices -Contains Email
     }
+
+    if (!(get-365Whoami -checkIfSignedInTo Exchange)){
+      write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+    
+      if (-not(Get-InstalledModule ExchangeOnlineManagement)) { 
+        Write-Host "Microsoft ExchangeOnlineManagement module not found" -ForegroundColor Black -BackgroundColor Yellow
+        $install = Read-Host "Do you want to install the Microsoft Graph Module?"
+    
+        if ($install -match "[yY]") {
+          Install-Module ExchangeOnlineManagement -Repository PSGallery -Scope CurrentUser -AllowClobber -Force
+        }else{
+          Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
+        } 
+      }
+
+      Connect-ExchangeOnline -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+    }
     
     foreach ($adomain in $domains) {
         $domainid = $adomain.id
         $ConnfiguredForMail = $adomain.supportedServices -Contains "Email"
 
         $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
-        #$DNS2 = $DNSrecs | Where-Object recordType -eq "Txt"  #) -and ($true))# ).AdditionalProperties.mailExchange
         $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
         $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
 
@@ -53,21 +70,18 @@ function Get-365DNSInfo {
         $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
         $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
         $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-
-        #$MXrecs = (Get-MgDomainServiceConfigurationRecord -DomainId $domainid | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-     
-      
-        try { 
-            [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
-        }
-        catch {
-            $er = $error[0]
+    
+        # try { 
+      [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
+     #   }
+        # catch {
+        #     $er = $error[0]
    
-            if ($er.FullyQualifiedErrorId -eq "CommandNotFoundException") {
-                write-host "You need to Connect-ExchangeOnline (maybe first Install-Module ExchangeOnlineManagement ) before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-                $M365DKIM = "ERROR:  Connect-ExchangeOnline in order to see this parameter"
-            }
-        }
+        #     if ($er.FullyQualifiedErrorId -eq "CommandNotFoundException") {
+        #         write-host "You need to Connect-ExchangeOnline (maybe first Install-Module ExchangeOnlineManagement ) before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+        #         $M365DKIM = "ERROR:  Connect-ExchangeOnline in order to see this parameter"
+        #     }
+        # }
         if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
 
         $arec = [PSCustomObject]@{
@@ -171,6 +185,7 @@ function  Get-365user {
         [switch]$showMailBox
     )
     Connect-365 
+
     $filterfor = ""
     if ($userPrincipalName) {
         $filterfor = '&$filter=userPrincipalName eq '
@@ -209,9 +224,21 @@ function  Get-365user {
     if ($result) {
         $users = $result.value
         if ($showMailBox){
-        if (!((get-365Whoami -DontElaborate).ExhangeOnline))
-        {
-            Connect-ExchangeOnline
+
+        if (!(get-365Whoami -checkIfSignedInTo Exchange)){
+          write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+        
+          if (-not(Get-InstalledModule ExchangeOnlineManagement)) { 
+            Write-Host "Microsoft ExchangeOnlineManagement module not found" -ForegroundColor Black -BackgroundColor Yellow
+            $install = Read-Host "Do you want to install the Microsoft Graph Module?"
+        
+            if ($install -match "[yY]") {
+              Install-Module ExchangeOnlineManagement -Repository PSGallery -Scope CurrentUser -AllowClobber -Force
+            }else{
+              Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
+            } 
+          }
+          Connect-ExchangeOnline -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
         }
                   
        
@@ -242,8 +269,10 @@ function  Get-365user {
             write-verbose " this next section checks exchangeonline"
             
             if ($showMailBox -and $user.mail ) {
-                     $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
-                    if ($maildetail.MailboxTypeDetail){
+            #  try{
+            #  $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
+              $maildetail =  Get-exomailboxStatistics  -UserPrincipalName $user.mail -Properties MailboxTypeDetail,SystemMessageSizeShutoffQuota,LastUserActionTime -ErrorAction SilentlyContinue
+                 if ($maildetail.MailboxTypeDetail){
                     $user.MailSize = $maildetail.TotalItemSize
                     $user.MailSizeLimit= $maildetail.SystemMessageSizeShutoffQuota
                     $user.MailBoxType = $maildetail.MailboxTypeDetail
@@ -254,7 +283,12 @@ function  Get-365user {
                         $user.mail =""
                         $user.proxyAddresses ="" 
                     }
-            }       
+                  }
+                  # catch{
+                  #   $user.mail =""
+                  #   $user.proxyAddresses ="" 
+                  # }
+           # }       
         if ($ShowMFA)
         {
             $user.MFAInfo = Get-365UserMFAMethods -userId $user.id |ConvertTo-Json -Compress
@@ -279,6 +313,13 @@ it also checks AZureAD and and ExchnageOnlins
 * currently the get-365DNSInfo function needs to also use the exchangeonlinemodule
   - but only if you need to check the DFKIM status within 365 - else the function will still run and show blanks in that property
 
+.PARAMETER DontElaborate
+ use this when checking connection from within another function - else this function will write-host extra detail abot scope or other auth settings.
+
+.parameter checkIfSignedInTo
+use this when checking is a specific tool is signed in to to - 
+then this function will return $null if not signed in, or will return the UserPrincipaName
+
 .EXAMPLE
 get-365Whoami
 
@@ -288,7 +329,10 @@ get-365Whoami
 function get-365Whoami {
     [CmdletBinding()]
     param(
-        [switch]$DontElaborate
+        [switch]
+        $DontElaborate,
+        [ValidateSet("MgGraph","Exchange","AzureAD")]
+        [string] $checkIfSignedInTo
     )
 
    # Connect-365 
@@ -299,9 +343,12 @@ function get-365Whoami {
     try {
         Write-Verbose "about to check login for MgGraph"
         $result = Invoke-MgGraphRequest -Method GET 'https://graph.microsoft.com/v1.0/me?$select=userPrincipalName' -OutputType PSObject 
-        $uMgGraph = $result.userPrincipalName     
+        $uMgGraph = $result.userPrincipalName  
     }
     catch { }
+    if ($checkIfSignedInTo -eq "MgGraph" ){
+      return  $uMgGraph 
+    }
     try {
         Write-Verbose "about to check login for ExchangeOnline"
 
@@ -311,14 +358,19 @@ function get-365Whoami {
         }
     }
     catch { }
+    if ($checkIfSignedInTo -eq "Exchange" ){
+      return $uExchange
+    }
     try {
-        Write-Verbose "about to check login for ADOnline"
+        Write-Verbose "about to check login for AZureAD"
 
         $result = Get-AzureADCurrentSessionInfo
         $uAzure = $result.Account.ID
     }
     catch { }
-
+    if ($checkIfSignedInTo -eq "AzureAD" ){
+      return $uAzure
+    }
     [PSCustomObject]@{
         MgGraph       = $uMgGraph
         ExhangeOnline = $uExchange
@@ -393,7 +445,8 @@ Function Connect-365 {
   }
   
 function Disconnect-365{
-    disconnect-MgGraph
+    disconnect-MgGraph -ErrorAction SilentlyContinue|Out-Null
+    if (get-365Whoami -checkIfSignedInTo Exchange) { Disconnect-ExchangeOnline}
 }
 
   Function Get-365Admins{
@@ -415,11 +468,25 @@ function Disconnect-365{
   }
 
 
+  <#
+  .SYNOPSIS
+  Get the MFA status of the user
+  
+  .DESCRIPTION
+  Long description
+  
+  .PARAMETER userId
+  either the UserPrincipalName or the ID of a 365 user
+  
+  .EXAMPLE
+  Get-365UserMFAMethods -userId sean.macey@imatec.co.nz -verbose
+
+  Get-365UserMFAMethods -userId fe636523-5608-438d-83f5-41b5c9a7fe95
+  
+  .NOTES
+  General notes
+  #>
   Function Get-365UserMFAMethods {
-    <#
-      .SYNOPSIS
-        Get the MFA status of the user
-    #>
     [CmdletBinding()]
     param(
       [Parameter(Mandatory = $true)] $userId
@@ -519,11 +586,6 @@ write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
   }
 
 
-
-Write-host 'ensure you Connect-MgGraph   first'
-write-host 'MgGraph can be installed with install-module microsoft.mggraph, but takes while so make sure it is not already  installed before you try to install'
-write-host 'ensure you Connect-ExchangeOnline  also (to get the M365 state of DKIM)'
-write-host 'Exchange-online module can be installed with Install-Module  ExchangeOnlineManagement '
 
 write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
 #write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green

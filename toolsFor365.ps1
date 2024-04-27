@@ -361,7 +361,7 @@ returns
 .NOTES
 
 #>
-function get-365Whoami {
+function Get-365Whoami {
     [CmdletBinding()]
     param(
         [switch]
@@ -437,7 +437,7 @@ get-365Domains
 .NOTES
 this is a very simple summary of get-mgdomain 
 #>
-function get-365Domains {
+function Get-365Domains {
     [CmdletBinding()]
     param (
         
@@ -660,7 +660,111 @@ write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
   }
 
 
+function Connect-JustToExchange{
+  if (!(get-365Whoami -checkIfSignedInTo Exchange)){
+    write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+  
+    if (-not(Get-InstalledModule ExchangeOnlineManagement)) { 
+      Write-Host "Microsoft ExchangeOnlineManagement module not found" -ForegroundColor Black -BackgroundColor Yellow
+      $install = Read-Host "Do you want to install the Microsoft Graph Module?"
+  
+      if ($install -match "[yY]") {
+        Install-Module ExchangeOnlineManagement -Repository PSGallery -Scope CurrentUser -AllowClobber -Force
+      }else{
+        Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
+      } 
+    }
+    Connect-ExchangeOnline -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+  }
+}
 
+function New-365SMXInboundConnector{
+  [CmdletBinding()]
+  param ()
+  connect-365
+  connect-JustToExchange
+
+
+  $prev = Get-InboundConnector
+  if ($prev.SenderIPAddresses -contains "113.197.67.0/24"){
+    write-host "An inbound Connector fort SMX already exits, If you wish to recreate it first delete '$($prev.Identity)'"
+    return
+  }
+ $senderIps = "113.197.64.0/24","113.197.65.0/24","113.197.66.0/24","113.197.67.0/24","203.84.134.0/24","203.84.135.0/24"
+  New-InboundConnector -Name "SMX-inbound-365" -ConnectorType Partner -Enabled $true -RequireTls $True -SenderIPAddresses $senderIps -EFSkipIPs $senderIps -SenderDomains "smtp:*"
+
+}
+
+function New-365SMXOutboundConnector
+{
+  [CmdletBinding()]
+  param ()
+  connect-365
+  connect-JustToExchange
+  $prev = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+  if ($prev)
+  {
+    write-host "365 SMX outbound connector was already created,"
+    return  $prev 
+  }
+  #New-OutboundConnector -name "SMX-Outbound-365" -Enabled $false -RecipientDomains * -ConnectorType Partner -SmartHosts "365.nz.smxemail.com"
+  New-OutboundConnector -name "SMX-Outbound-365" -Enabled $false -RecipientDomains * -ConnectorType Partner -SmartHosts "365.nz.smxemail.com" -UseMXRecord $false
+  write-Host "Only enable this connector when SMX, SPF, DKIM are configured to avoid problems, the connector is created as DISABLED, You must seperately enable it!"
+  Write-host "When this connector is enabled all email traffic will be sent to it -=> so you better make sure the SMX, SPF,DKIM configurations are correct first " -ForegroundColor Yellow
+
+  write-host ""
+  write-Host "IMPORTANT: to avoid production impacts this script does not ENABLE the connector, once you are certain that all SPF, MX, DKIM and SMX configuration is correct( and only then) you should Enable-365SMXOutboundConnector"
+
+}
+
+function Enable-365SMXOutboundConnector
+{
+  [CmdletBinding()]
+  param ()
+  connect-365
+  connect-JustToExchange
+
+  $prev = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+  if (!$prev)
+  {
+    write-host "Unable to find the SMX utbound connector: so can't enable it "
+    return
+  }
+
+  If ($prev.Enabled -eq $false){
+    write-host "Enabling SMX outbound"
+    Write-host "You better make sure the SMX, SPF,DKIM configurations are correct first, else disbale this! " -ForegroundColor Yellow
+    $prev | Set-OutboundConnector -Enabled $true
+  }
+   else {
+    write-Host "the SMX Connector was already enabled"
+   }
+   Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+
+}
+
+
+
+function Disable-365SMXOutboundConnector
+{
+  [CmdletBinding()]
+  param ()
+  connect-365
+  connect-JustToExchange
+
+  $prevs = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+  if (!$prevs)
+  {
+    write-host "Unable to find the SMX otbound connector: so can't Disable it " -ForegroundColor Yellow
+    return
+  }
+  
+  $prevs | Set-OutboundConnector -Enabled $false
+
+   write-host "DisabledSMX outbounfConnector $($prevs.Name )"
+   Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+
+}
 #write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
 #write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
 #write-host 'Connect-ExchangeOnline' -ForegroundColor green
@@ -683,4 +787,6 @@ get-childitem function:$_ |Where-Object Name -Like "*-365*" |ForEach-Object $_.N
 
 #get-childitem function:$_  |Where-Object Name -NotLike "*:*"
 #get-childitem function:$_  |Where-Object Source -EQ "" |Where-Object Name -NotLike "*:*" |Select-Object name, PSPath,PSDrive,PSProvider, PSIsCOntainer,Source,ModuleName
+
+
 

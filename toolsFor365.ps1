@@ -315,14 +315,49 @@ it also checks AZureAD and and ExchnageOnlins
 
 .PARAMETER DontElaborate
  use this when checking connection from within another function - else this function will write-host extra detail abot scope or other auth settings.
+ get-365Whoami -DontElaborate
+returns just the list of connection : with no sundry detail about scopes
+MgGraph                 ExhangeOnline AZureAD MSoline
+-------                 ------------- ------- -------
+******@*.co.nz                       Not checked
+
+get-365Whoami
+returns..
+MgGraph Scopes are
+["AuditLog.Read.All","AuthenticationContext.Read.All","Directory.Read.All","Domain.Read.All","Group.Read.All","Group.ReadWrite.All","Mail.Read","openid","Organization.Read.All","Policy.Read.All","profile","RoleAssignmentSchedule.Read.Directory","RoleManagement.Read.All","User.Read","User.Read.All","User.ReadWrite.All","UserAuthenticationMethod.Read.All","email"]
+MgGraph                 ExhangeOnline AZureAD MSoline
+-------                 ------------- ------- -------
+******@*.co.nz                       Not checked
 
 .parameter checkIfSignedInTo
 use this when checking is a specific tool is signed in to to - 
+allowed values == "MgGraph","Exchange","AzureAD"
 then this function will return $null if not signed in, or will return the UserPrincipaName
 
-.EXAMPLE
-get-365Whoami
+returns somehting like
+*@*.co.nz
 
+.EXAMPLE
+
+get-365Whoami -DontElaborate
+returns just the list of connection : with no sundry detail about scopes
+MgGraph                 ExhangeOnline AZureAD MSoline
+-------                 ------------- ------- -------
+******@*.co.nz                       Not checked
+
+get-365Whoami
+returns..
+MgGraph Scopes are
+["AuditLog.Read.All","AuthenticationContext.Read.All","Directory.Read.All","Domain.Read.All","Group.Read.All","Group.ReadWrite.All","Mail.Read","openid","Organization.Read.All","Policy.Read.All","profile","RoleAssignmentSchedule.Read.Directory","RoleManagement.Read.All","User.Read","User.Read.All","User.ReadWrite.All","UserAuthenticationMethod.Read.All","email"]
+MgGraph                 ExhangeOnline AZureAD MSoline
+-------                 ------------- ------- -------
+******@*.co.nz                       Not checked
+
+
+get-365Whoami -checkIfSignedInTo MgGraph 
+returns just the UserPrincipalName signed into MgGraph (if any)
+returns
+*@*.co.nz
 .NOTES
 
 #>
@@ -414,7 +449,21 @@ function get-365Domains {
 
 }
 
+<#
+.SYNOPSIS
+connects to MgGraph (using MS prompt)
 
+.DESCRIPTION
+connects to MgGraph
+WARNING: depending oon your workstation setup it may just autoconnect you with your prior credentials without prompting for new
+if you need to login with different credential then Disconnect-365 first !
+some scripts may need to connect to ExchangeOnline Also - in that case the script will prompt when required
+
+.EXAMPLE
+disconnect-365 
+Connect-365
+
+#>
 Function Connect-365 {
     [CmdletBinding()]
     param()
@@ -434,26 +483,51 @@ Function Connect-365 {
     $connections =  (get-365Whoami -DontElaborate).MgGraph
     # Connect to Graph
     if ($connections){
-        write-verbose "audit: you are connected to MgGraph with userPrincipleName = $connections"
+        write-host "Connect-365: you are connected to MgGraph with userPrincipleName = $connections"
         $mgCOntext = Get-MgContext 
-        write-verbose "Scopes are $($mgCOntext.scopes |ConvertTo-Json -Compress)"
+        write-verbose "Scopes are $($mgCOntext.scopes|ConvertTo-Json -Compress)"
         return
     }
+   # $signinID = read-host "ENter the Signin ID for MS Graph"
 
     Write-Host "Connecting to Microsoft Graph" -ForegroundColor Cyan
     Connect-MgGraph -Scopes "User.Read.All,Group.Read.All,AuditLog.Read.All,Mail.Read,Domain.Read.All,RoleManagement.Read.All,Policy.Read.All,Directory.Read.All,Organization.Read.All,UserAuthenticationMethod.Read.All,AuthenticationContext.Read.All"  -NoWelcome
+    $connections =  (get-365Whoami -DontElaborate).MgGraph
+    write-host "Connect-365: you are connected to MgGraph with userPrincipleName = $connections"
+
   }
   
+<#
+.SYNOPSIS
+disconnects from MgGraph, AND ExchangeOnline
+
+.DESCRIPTION
+disconnects from MgGraph, AND ExchangeOnline
+
+.EXAMPLE
+connects to MgGraph
+
+#>
 function Disconnect-365{
     disconnect-MgGraph -ErrorAction SilentlyContinue|Out-Null
     if (get-365Whoami -checkIfSignedInTo Exchange) { Disconnect-ExchangeOnline}
 }
 
-  Function Get-365Admins{
-    <#
-    .SYNOPSIS
-      Get all user with an Admin role
-    #>
+
+<#
+.SYNOPSIS
+gets detail showing admin roles assigned to any user
+
+.DESCRIPTION
+gets detail showing admin roles assigned to any user
+
+
+#>
+Function Get-365Admins{
+    # <#
+    # .SYNOPSIS
+    #   Get all user with an Admin role
+    # #>
     process{
        Connect-365 
       $admins = Get-MgDirectoryRole | Select-Object DisplayName, Id | 
@@ -587,9 +661,10 @@ write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
 
 
 
-write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
+#write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
 #write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
 #write-host 'Connect-ExchangeOnline' -ForegroundColor green
+<#
 write-Host '. .\toolsFor365' -ForegroundColor green
 write-host 'get-365DNSInfo' -ForegroundColor green
 write-host 'get-365Licenses' -ForegroundColor green
@@ -597,6 +672,15 @@ write-host 'get-365User' -ForegroundColor green
 write-host 'get-365whoami' -ForegroundColor green
 write-host 'get-365Domains' -ForegroundColor green
 write-host 'get-365MFAMethods' -ForegroundColor green
+#>
+
 
 #beta methods, not yet avail in mggraph prod
 #https://graph.microsoft.com/beta/me/authentication/signInPreferences
+
+get-childitem function:$_ |Where-Object Name -Like "*-365*" |ForEach-Object $_.Name {write-host "$($_.name)"}
+#get-childitem function:$_ |Where-Object Name -notLike "*-365*" |Select-Object -Property *
+
+#get-childitem function:$_  |Where-Object Name -NotLike "*:*"
+#get-childitem function:$_  |Where-Object Source -EQ "" |Where-Object Name -NotLike "*:*" |Select-Object name, PSPath,PSDrive,PSProvider, PSIsCOntainer,Source,ModuleName
+

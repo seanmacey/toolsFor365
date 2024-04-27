@@ -660,6 +660,17 @@ write-verbose "Get-365UserMFAMethods: getting MFA for user $userId "
   }
 
 
+<#
+.SYNOPSIS
+connects to ExchangeOnline - which is needed by some scripts
+
+.DESCRIPTION
+connects to ExchangeOnline - which is needed by some scripts
+if exchangeonlineManagement module is not installed, then it will first install it
+
+.EXAMPLE
+Connect-JustToExchange
+#>
 function Connect-JustToExchange{
   if (!(get-365Whoami -checkIfSignedInTo Exchange)){
     write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
@@ -678,6 +689,21 @@ function Connect-JustToExchange{
   }
 }
 
+<#
+.SYNOPSIS
+creates a new SMX to 365 mail connector
+
+.DESCRIPTION
+creates a new SMX to 365 mail connector
+this enable mail to transit from SMX towards 365
+this CMD also configured the Skip listing (also needed by SMX)
+
+.EXAMPLE
+An example
+
+.NOTES
+General notes
+#>
 function New-365SMXInboundConnector{
   [CmdletBinding()]
   param ()
@@ -695,6 +721,19 @@ function New-365SMXInboundConnector{
 
 }
 
+<#
+.SYNOPSIS
+create a new SMX outbound Connector (in a disabled state)
+
+.DESCRIPTION
+this is SAFE to use - since the created connector must be seperately enabled
+before enabling make sure that SMX, DNS, SPF, DKIM are correctly configured
+you must seperate enabled using Enable-365SMXOutboundConnector
+
+
+.EXAMPLE
+New-365SMXInboundConnector
+#>
 function New-365SMXOutboundConnector
 {
   [CmdletBinding()]
@@ -717,6 +756,20 @@ function New-365SMXOutboundConnector
 
 }
 
+
+<#
+.SYNOPSIS
+Make 365 send ALL its email through SMX filtering.
+If SMX is not configured then 365 email will fail delivery!
+
+.DESCRIPTION
+Make 365 send all its email through SMX filtering.
+Only Enable the outbound connector once you are sure SMX, DKIM, SPF and MX records are properly configured.
+failiure to ensure SMX etc are properly configured before youe nable this will cause 365 mail delivery to fail
+
+.EXAMPLE
+An example
+#>
 function Enable-365SMXOutboundConnector
 {
   [CmdletBinding()]
@@ -744,7 +797,18 @@ function Enable-365SMXOutboundConnector
 }
 
 
+<#
+.SYNOPSIS
+disables the 365 connector to SMX mail filtering
 
+.DESCRIPTION
+disables the 365 connector to SMX mail filtering
+use this when you want to to M365 from sending emails through SMX filtering
+
+.EXAMPLE
+Disable-365SMXOutboundConnector
+
+#>
 function Disable-365SMXOutboundConnector
 {
   [CmdletBinding()]

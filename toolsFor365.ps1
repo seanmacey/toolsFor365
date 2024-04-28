@@ -15,15 +15,36 @@
    
     or try
     Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"
-.EXAMPLE
+.PARAMETER Domain
+Optional: and if used will return information ONLY on the specific Name (and only if it is also within the 365 Account)
+the FQN of the domain (e.g. imatec.co.nz)
+
+    .EXAMPLE
 $i = Get-365DNSInfo 
 Get-365DNSInfo |fl
 Get-365DNSInfo |export-csv -NoTypeInformation M365Mailsetup.csv
+
+get-365DNSInfo -Domain imatec.co.nz
+Connect-365: you are connected to MgGraph with userPrincipleName = sean.macey@imatec.co.nz
+
+Name                 : imatec.co.nz
+M365_MailEnabled     : True
+SOA                  : 1stDomains
+M365_spf             : v=spf1 include:spf.protection.outlook.com -all
+DNS_spf              : v=spf1 include:spf.protection.outlook.com include:spf.nz.smxemail.com ip4:125.236.231.136 include:autotask.net ~all
+M365_mx              : imatec-co-nz.mail.protection.outlook.com
+DNS_mx               : mx1.nz.smxemail.com, mx2.nz.smxemail.com
+M365_DKIM_Configured : True
+DNS_DKIM_SMX         : smx1.imatec-co-nz-694f55df.dkim.smxemail.com, smx2.imatec-co-nz-694f55df.dkim.smxemail.com
+DNS_DKIM_M365        : selector1-imatec-co-nz._domainkey.kissitnz.onmicrosoft.com, selector2-imatec-co-nz._domainkey.kissitnz.onmicrosoft.com
+
+
 .NOTES
 #>
 function Get-365DNSInfo {
     [CmdletBinding()]
     param (
+        [Alias("Name")]
         $Domain 
     )
     Connect-365
@@ -62,49 +83,124 @@ function Get-365DNSInfo {
         $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
         $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
 
-        $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
- 
+       # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+       # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
 
-        $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
-        $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
-        $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-        $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-        $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+        # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
+        # $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+        # $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+        # $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
     
-        # try { 
-      [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
-     #   }
-        # catch {
-        #     $er = $error[0]
-   
-        #     if ($er.FullyQualifiedErrorId -eq "CommandNotFoundException") {
-        #         write-host "You need to Connect-ExchangeOnline (maybe first Install-Module ExchangeOnlineManagement ) before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-        #         $M365DKIM = "ERROR:  Connect-ExchangeOnline in order to see this parameter"
-        #     }
-        # }
+       [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
+
+      $resolvedDNS = Resolve-DNSSummary -Domain $domainid
+
+
         if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
 
         $arec = [PSCustomObject]@{
             Name                 = $domainid
             M365_MailEnabled     = $ConnfiguredForMail
+            SOA     =  $resolvedDNS.Provider
             M365_spf             = $spfs
-            DNS_spf              = $spfDNS
+            DNS_spf              =  $resolvedDNS.SPF #$spfDNS
             M365_mx              = $MXrecs
-            DNS_mx               = $MXinDNS
+            DNS_mx               =  $resolvedDNS.MX #$MXinDNS
             M365_DKIM_Configured = $M365DKIM
-            DNS_DKIM_SMX_1       = "" 
-            DNS_DKIM_SMX_2       = ""
-            DNS_DKIM_M365_1      = ""
-            DNS_DKIM_M365_2      = ""
+            DNS_DKIM_SMX       = $resolvedDNS.DKIM_SMX
+            DNS_DKIM_M365      = $resolvedDNS.DKIM_365
 
         }
-        if ($DKIMsmxinDNS1  ) { $arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)" }
-        if ($DKIMsmxinDNS2  ) { $arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)" }
-        if ($DKIMM365inDNS1 ) { $arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)" }
-        if ($DKIMM365inDNS2 ) { $arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)" }
+        # if ($DKIMsmxinDNS1  ) { $arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)" }
+        # if ($DKIMsmxinDNS2  ) { $arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)" }
+        # if ($DKIMM365inDNS1 ) { $arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)" }
+        # if ($DKIMM365inDNS2 ) { $arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)" }
         $arec
     }
 }
+
+<#
+.SYNOPSIS
+Query DNS for a specific Domain - return a SUmmary
+
+.DESCRIPTION
+Query DNS for a specific Domain - return a SUmmary
+provides summary of MX, HOme IP (usually also WWW), www, SPF and identifies if DKIM is configured for our commonly used systems
+
+.PARAMETER Domain
+has an alias of Name
+the FQN (Domain) that needs to be resolve
+The MUST be the DOMAIN suffix only, do not include the hostname
+i.e use imatec.co.nz , and not wwww.imatec.co.nz
+
+   
+
+
+.EXAMPLE
+Resolve-DNSSummary -Domain imatec.co.nz   
+Resolve-DNSSummary -Name imatec.co.nz       
+
+.NOTES
+General notes
+#>
+function Resolve-DNSSummary{
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory =$true)]
+    [Alias("Name")]
+    [string]
+    $Domain
+)
+$SOA = (Resolve-DnsName -Name $domain -Type SOA -ErrorAction SilentlyContinue).PrimaryServer
+$spfDNS = (Resolve-DnsName -Name $domain -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+$MxinDNS = (Resolve-DnsName -Name $domain -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domain).NameExchange -join ", " 
+$dnsroot =  (Resolve-DnsName -Name $domain -ErrorAction SilentlyContinue | where-object Name -eq $domain).IP4Address -join ", " 
+$www =  (Resolve-DnsName -Name www.$domain -ErrorAction SilentlyContinue | where-object Name -eq $domain).IP4Address -join ", " 
+
+
+$arec = [PSCustomObject]@{
+  Home                 = $dnsroot
+  www = $www
+  Provider =  $SOA
+  MX     = $MxinDNS
+  DKIM_SMX = ""
+  DKIM_365 = ""
+  SPF_SMX =""
+  SPF_365 =""
+  SPF = $spfDNS
+ }
+
+switch ($SOA)
+{
+  {$SOA -Like "*1stDomains*"} {$arec.Provider = "1stDomains"}
+  {$SOA -Like "*cms-tool*"} {$arec.Provider = "WebsiteWorld"}
+  {$SOA -Like "*cloudflare*"} {$arec.Provider = "CloudFlare"}
+  {$SOA -Like "*crazydomains*"} {$arec.Provider = "CrazyDomains"}
+  {$SOA -Like "*domaincontrol*"} {$arec.Provider = "Bluehost.com (domaincontrol.com)"}
+  {$SOA -Like "*cpanel.com*"} {$arec.Provider = "Domainz.co.nz (server-cpanel.com)"}
+  {$SOA -Like "*onlydomains.com*"} {$arec.Provider = "OnlyDomains"}
+  {$SOA -Like "*omninet.co.nz*"} {$arec.Provider = "OmniNet"}
+}
+
+if ($spfDNS -Like "*include:spf.nz.smxemail.com*all") {$arec.SPF_SMX = $true}
+if ($spfDNS -Like "*include:spf.protection.outlook.com*all") {$arec.SPF_365 = $true}
+
+$DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) |Select-Object  NameHost
+$DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) |Select-Object  NameHost
+if ($DKIMsmxinDNS1 -or $DKIMsmxinDNS2) {
+ # $arec.DKIM_SMX = @($DKIMsmxinDNS1,$DKIMsmxinDNS2) |ConvertTo-Json -Compress
+  $arec.DKIM_SMX = "$($DKIMsmxinDNS1.NameHost), $($DKIMsmxinDNS2.nameHost)"
+}
+
+$DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) |Select-Object  NameHost
+$DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) |Select-Object  NameHost
+if ($DKIMM365inDNS1 -or $DKIMM365inDNS2){
+  $arec.DKIM_365 = "$($DKIMM365inDNS1.NameHost), $($DKIMM365inDNS2.nameHost)" #) |ConvertTo-Json -Compress
+}
+$arec
+}
+
+
 
 <#
 .SYNOPSIS
@@ -730,30 +826,43 @@ this is SAFE to use - since the created connector must be seperately enabled
 before enabling make sure that SMX, DNS, SPF, DKIM are correctly configured
 you must seperate enabled using Enable-365SMXOutboundConnector
 
-
+.PARAMETER Country
+default is NZ for NZ, can also be configured AU for Australia
+this defines what interface to SMX filtering is used
+NZ = 365.nz.smxemail.com
+AU => 365.au.smxemail.com
 .EXAMPLE
 New-365SMXInboundConnector
 #>
 function New-365SMXOutboundConnector
 {
   [CmdletBinding()]
-  param ()
+  param (
+    [ValidateSet("NZ","AU")]
+    [string]$Country = "NZ"
+  )
   connect-365
   connect-JustToExchange
-  $prev = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+
+  switch ($Country)
+  {
+    "NZ" {$countrySring = "365.nz.smxemail.com"}
+    "AU" {$countrySring = "365.au.smxemail.com"}
+    default {$countrySring = "365.nz.smxemail.com"}
+  }
+  $prev = Get-OutboundConnector |Where-Object SmartHosts -like  "*.smxemail.com"
   if ($prev)
   {
     write-host "365 SMX outbound connector was already created,"
     return  $prev 
   }
   #New-OutboundConnector -name "SMX-Outbound-365" -Enabled $false -RecipientDomains * -ConnectorType Partner -SmartHosts "365.nz.smxemail.com"
-  New-OutboundConnector -name "SMX-Outbound-365" -Enabled $false -RecipientDomains * -ConnectorType Partner -SmartHosts "365.nz.smxemail.com" -UseMXRecord $false
+  New-OutboundConnector -name "SMX-Outbound-365" -Enabled $false -RecipientDomains * -ConnectorType Partner -SmartHosts $countrySring -UseMXRecord $false
   write-Host "Only enable this connector when SMX, SPF, DKIM are configured to avoid problems, the connector is created as DISABLED, You must seperately enable it!"
   Write-host "When this connector is enabled all email traffic will be sent to it -=> so you better make sure the SMX, SPF,DKIM configurations are correct first " -ForegroundColor Yellow
 
   write-host ""
   write-Host "IMPORTANT: to avoid production impacts this script does not ENABLE the connector, once you are certain that all SPF, MX, DKIM and SMX configuration is correct( and only then) you should Enable-365SMXOutboundConnector"
-
 }
 
 
@@ -777,7 +886,7 @@ function Enable-365SMXOutboundConnector
   connect-365
   connect-JustToExchange
 
-  $prev = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+  $prev = Get-OutboundConnector |Where-Object SmartHosts -like "365.*.smxemail.com"
   if (!$prev)
   {
     write-host "Unable to find the SMX utbound connector: so can't enable it "
@@ -792,7 +901,7 @@ function Enable-365SMXOutboundConnector
    else {
     write-Host "the SMX Connector was already enabled"
    }
-   Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+   Get-OutboundConnector |Where-Object SmartHosts -like "365.*.smxemail.com"
 
 }
 
@@ -816,7 +925,7 @@ function Disable-365SMXOutboundConnector
   connect-365
   connect-JustToExchange
 
-  $prevs = Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+  $prevs = Get-OutboundConnector |Where-Object SmartHosts -like "365.*.smxemail.com"
   if (!$prevs)
   {
     write-host "Unable to find the SMX otbound connector: so can't Disable it " -ForegroundColor Yellow
@@ -826,7 +935,7 @@ function Disable-365SMXOutboundConnector
   $prevs | Set-OutboundConnector -Enabled $false
 
    write-host "DisabledSMX outbounfConnector $($prevs.Name )"
-   Get-OutboundConnector |Where-Object SmartHosts -eq "365.nz.smxemail.com"
+   Get-OutboundConnector |Where-Object SmartHosts -like "365.*.smxemail.com"
 
 }
 #write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
@@ -847,6 +956,9 @@ write-host 'get-365MFAMethods' -ForegroundColor green
 #https://graph.microsoft.com/beta/me/authentication/signInPreferences
 
 get-childitem function:$_ |Where-Object Name -Like "*-365*" |ForEach-Object $_.Name {write-host "$($_.name)"}
+write-host "Connect-JustExchange"
+write-host "Resolve-DNSSUmmary"
+
 #get-childitem function:$_ |Where-Object Name -notLike "*-365*" |Select-Object -Property *
 
 #get-childitem function:$_  |Where-Object Name -NotLike "*:*"

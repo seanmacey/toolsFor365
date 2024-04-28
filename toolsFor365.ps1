@@ -527,20 +527,24 @@ function Get-365Whoami {
   if ($checkIfSignedInTo -eq "Exchange" ) {
     return $uExchange
   }
+
+
+  if ($checkIfSignedInTo -eq "AzureAD" ) {
   try {
     Write-Verbose "about to check login for AZureAD"
 
-    $result = Get-AzureADCurrentSessionInfo
+    $result = Get-AzureADCurrentSessionInfo -ErrorAction SilentlyContinue
     $uAzure = $result.Account.ID
   }
   catch { }
-  if ($checkIfSignedInTo -eq "AzureAD" ) {
+
     return $uAzure
   }
+
   [PSCustomObject]@{
     MgGraph       = $uMgGraph
     ExhangeOnline = $uExchange
-    AZureAD       = $uAzure
+    AZureAD       = "Not-Checked"#$uAzure
     MSoline       = "Not checked"
   }
 

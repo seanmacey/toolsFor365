@@ -44,76 +44,76 @@ DNS_DKIM_M365        : selector1-imatec-co-nz._domainkey.kissitnz.onmicrosoft.co
 function Get-365DNSInfo {
   [CmdletBinding()]
   param (
-    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [Alias("Name")]
     [Alias("id")]
     [string[]]$Domain 
   )
-  begin{
+  begin {
     Connect-365
-  # if (!(get-365whoami).)  
-  if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
-    write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-    Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
-  }
-  }
-
-  Process{
-  write-verbose "about to try and get data from MgGraph "
-  if ($Domain) {
-    $domains = get-mgdomain  | where-object Id -in $domain
-  }
-  else {
-    $domains = get-mgdomain  | where-object Id -NotLike "*.onmicrosoft.com"   #| Where-Object supportedServices -Contains Email
-  }
-
-
-
-    
-  foreach ($adomain in $domains) {
-    $domainid = $adomain.id
-    $ConnfiguredForMail = $adomain.supportedServices -Contains "Email"
-
-    $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
-    $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
-    $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-
-    # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
-    # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
-
-    # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
-    # $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-    # $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-    # $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-    
-    [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
-
-    $resolvedDNS = Resolve-DNSSummary -Domain $domainid
-
-
-    if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
-
-    $arec = [PSCustomObject]@{
-      Name                 = $domainid
-      M365_MailEnabled     = $ConnfiguredForMail
-      SOA                  = $resolvedDNS.Provider
-      M365_spf             = $spfs
-      DNS_spf              = $resolvedDNS.SPF #$spfDNS
-      M365_mx              = $MXrecs
-      DNS_mx               = $resolvedDNS.MX #$MXinDNS
-      M365_DKIM_Configured = $M365DKIM
-      DNS_DKIM_SMX         = $resolvedDNS.DKIM_SMX
-      DNS_DKIM_M365        = $resolvedDNS.DKIM_365
-
+    # if (!(get-365whoami).)  
+    if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
+      write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+      Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
     }
-    # if ($DKIMsmxinDNS1  ) { $arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)" }
-    # if ($DKIMsmxinDNS2  ) { $arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)" }
-    # if ($DKIMM365inDNS1 ) { $arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)" }
-    # if ($DKIMM365inDNS2 ) { $arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)" }
-    $arec
   }
-}
-end{}
+
+  Process {
+    write-verbose "about to try and get data from MgGraph "
+    if ($Domain) {
+      $domains = get-mgdomain  | where-object Id -in $domain
+    }
+    else {
+      $domains = get-mgdomain  | where-object Id -NotLike "*.onmicrosoft.com"   #| Where-Object supportedServices -Contains Email
+    }
+
+
+
+    
+    foreach ($adomain in $domains) {
+      $domainid = $adomain.id
+      $ConnfiguredForMail = $adomain.supportedServices -Contains "Email"
+
+      $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
+      $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
+      $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
+
+      # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+      # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
+
+      # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
+      # $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+      # $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+      # $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
+    
+      [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
+
+      $resolvedDNS = Resolve-DNSSummary -Domain $domainid
+
+
+      if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
+
+      $arec = [PSCustomObject]@{
+        Name                 = $domainid
+        M365_MailEnabled     = $ConnfiguredForMail
+        SOA                  = $resolvedDNS.Provider
+        M365_spf             = $spfs
+        DNS_spf              = $resolvedDNS.SPF #$spfDNS
+        M365_mx              = $MXrecs
+        DNS_mx               = $resolvedDNS.MX #$MXinDNS
+        M365_DKIM_Configured = $M365DKIM
+        DNS_DKIM_SMX         = $resolvedDNS.DKIM_SMX
+        DNS_DKIM_M365        = $resolvedDNS.DKIM_365
+
+      }
+      # if ($DKIMsmxinDNS1  ) { $arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)" }
+      # if ($DKIMsmxinDNS2  ) { $arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)" }
+      # if ($DKIMM365inDNS1 ) { $arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)" }
+      # if ($DKIMM365inDNS2 ) { $arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)" }
+      $arec
+    }
+  }
+  end {}
 }
 
 <#
@@ -147,61 +147,71 @@ function Resolve-DNSSummary {
     [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [Alias("Name")]
     [Alias("id")]
-    [string]
+    [string[]]
     $Domain
+  
   )
   begin {}
   Process {
-    $SOA = (Resolve-DnsName -Name $domain -Type SOA -ErrorAction SilentlyContinue).PrimaryServer
-    $spfDNS = (Resolve-DnsName -Name $domain -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
-    $MxinDNS = (Resolve-DnsName -Name $domain -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domain).NameExchange -join ", " 
-    $dnsroot = (Resolve-DnsName -Name $domain -ErrorAction SilentlyContinue | where-object Name -eq $domain).IP4Address -join ", " 
-    $www = (Resolve-DnsName -Name www.$domain -ErrorAction SilentlyContinue | where-object Name -eq $domain).IP4Address -join ", " 
+    foreach ($adomain in $Domain) {
+
+  
+      $SOA = (Resolve-DnsName -Name $adomain -Type SOA -ErrorAction SilentlyContinue).PrimaryServer
+      $spfDNS = (Resolve-DnsName -Name $adomain -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+      $MxinDNS = (Resolve-DnsName -Name $adomain -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $adomain).NameExchange -join ", " 
+      $dnsroot = (Resolve-DnsName -Name $adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
+      $www = (Resolve-DnsName -Name www.$adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
 
 
-    $arec = [PSCustomObject]@{
-      Home     = $dnsroot
-      www      = $www
-      Provider = $SOA
-      MX       = $MxinDNS
-      DKIM_SMX = ""
-      DKIM_365 = ""
-      SPF_SMX  = ""
-      SPF_365  = ""
-      SPF      = $spfDNS
+      $arec = [PSCustomObject]@{
+        Name     = $adomain
+        Home     = $dnsroot
+        www      = $www
+        Provider = $SOA
+        MX       = $MxinDNS
+        DKIM_SMX = ""
+        DKIM_365 = ""
+        SPF_SMX  = ""
+        SPF_365  = ""
+        SPF      = $spfDNS
+      }
+
+      switch ($SOA) {
+        { $SOA -Like "*1stDomains*" } { $arec.Provider = "1stDomains" }
+        { $SOA -Like "*cms-tool*" } { $arec.Provider = "WebsiteWorld" }
+        { $SOA -Like "*cloudflare*" } { $arec.Provider = "CloudFlare" }
+        { $SOA -Like "*crazydomains*" } { $arec.Provider = "CrazyDomains" }
+        { $SOA -Like "*domaincontrol*" } { $arec.Provider = "Bluehost.com (domaincontrol.com)" }
+        { $SOA -Like "*cpanel.com*" } { $arec.Provider = "Domainz.co.nz (server-cpanel.com)" }
+        { $SOA -Like "*onlydomains.com*" } { $arec.Provider = "OnlyDomains" }
+        { $SOA -Like "*omninet.co.nz*" } { $arec.Provider = "OmniNet" }
+      }
+
+      if ($spfDNS -Like "*include:spf.nz.smxemail.com*all") { $arec.SPF_SMX = $true }
+      if ($spfDNS -Like "*include:spf.protection.outlook.com*all") { $arec.SPF_365 = $true }
+
+      $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
+      $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
+      if ($DKIMsmxinDNS1 -or $DKIMsmxinDNS2) {
+        # $arec.DKIM_SMX = @($DKIMsmxinDNS1,$DKIMsmxinDNS2) |ConvertTo-Json -Compress
+        $arec.DKIM_SMX = "$($DKIMsmxinDNS1.NameHost), $($DKIMsmxinDNS2.nameHost)"
+      }
+
+      $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
+      $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
+      if ($DKIMM365inDNS1 -or $DKIMM365inDNS2) {
+        $arec.DKIM_365 = "$($DKIMM365inDNS1.NameHost), $($DKIMM365inDNS2.nameHost)" #) |ConvertTo-Json -Compress
+      }
+      if ($arec.Home) { $arec }
+      else {
+        write-host "Resoive-DNSSummary: Did not records for domain: adomain" -ForegroundColor Red
+      }
     }
-
-    switch ($SOA) {
-      { $SOA -Like "*1stDomains*" } { $arec.Provider = "1stDomains" }
-      { $SOA -Like "*cms-tool*" } { $arec.Provider = "WebsiteWorld" }
-      { $SOA -Like "*cloudflare*" } { $arec.Provider = "CloudFlare" }
-      { $SOA -Like "*crazydomains*" } { $arec.Provider = "CrazyDomains" }
-      { $SOA -Like "*domaincontrol*" } { $arec.Provider = "Bluehost.com (domaincontrol.com)" }
-      { $SOA -Like "*cpanel.com*" } { $arec.Provider = "Domainz.co.nz (server-cpanel.com)" }
-      { $SOA -Like "*onlydomains.com*" } { $arec.Provider = "OnlyDomains" }
-      { $SOA -Like "*omninet.co.nz*" } { $arec.Provider = "OmniNet" }
-    }
-
-    if ($spfDNS -Like "*include:spf.nz.smxemail.com*all") { $arec.SPF_SMX = $true }
-    if ($spfDNS -Like "*include:spf.protection.outlook.com*all") { $arec.SPF_365 = $true }
-
-    $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
-    $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
-    if ($DKIMsmxinDNS1 -or $DKIMsmxinDNS2) {
-      # $arec.DKIM_SMX = @($DKIMsmxinDNS1,$DKIMsmxinDNS2) |ConvertTo-Json -Compress
-      $arec.DKIM_SMX = "$($DKIMsmxinDNS1.NameHost), $($DKIMsmxinDNS2.nameHost)"
-    }
-
-    $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
-    $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
-    if ($DKIMM365inDNS1 -or $DKIMM365inDNS2) {
-      $arec.DKIM_365 = "$($DKIMM365inDNS1.NameHost), $($DKIMM365inDNS2.nameHost)" #) |ConvertTo-Json -Compress
-    }
-    if ($arec.Home) {$arec}
   }
   end {
 
   }
+
 }
 
 
@@ -276,151 +286,149 @@ $variable = get-365user
 General notes
 #>
 function  Get-365user {
-  [CmdletBinding(DefaultParameterSetName='Name')]
+  [CmdletBinding()]
   param(
-    [Parameter(Mandatory = $true,ParameterSetName = 'Name', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    #[Parameter(Mandatory = $true, ParameterSetName = 'Name', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [alias('Name')]
     [string[]]$userPrincipalName,
 
-    [Parameter(Mandatory = $true,ParameterSetName = 'id', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+#    [Parameter(Mandatory = $true, ParameterSetName = 'id', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    [alias('id')]
     [string]$userid,
 
     [switch]$basicInfoOnly,
     [switch]$ShowMFA,
-    [switch]$showMailBox
+    [switch]$showMailBox,
+    [switch]$EnablebUsersOnly
   )
 
-  begin{
-   Connect-365   
-   if ($showMailBox) {
-   # Connect-JustToExchange
-    Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
-   }
+  begin {
+    Connect-365 -SilentifAlreadyConnected
+    if ($showMailBox) {
+      Connect-JustToExchange
+      Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+    }
   }
 
-  process{
+  process {
 
   
 
-  $filterfor = ""
-  if ($userPrincipalName) {
-    # $filterfor = '&$filter=userPrincipalName eq '
-    # $filterfor = "$filterfor'$userPrincipalName'"
-    $filterfor = '&$filter=userPrincipalName in '
-    $filterfor = "$filterfor('$($userPrincipalName -join ("','"))')"
-    write-debug "Get-365User: filter Name $filterfor"
+    $filterfor = ""
+    if ($userPrincipalName) {
+      # $filterfor = '&$filter=userPrincipalName eq '
+      # $filterfor = "$filterfor'$userPrincipalName'"
+      $filterfor = '&$filter=userPrincipalName in '
+      $filterfor = "$filterfor('$($userPrincipalName -join ("','"))')"
+      write-debug "Get-365User: filter Name $filterfor"
+    
+    }
+    if ($userid) {
+      # $filterfor = '&$filter=id eq '
+      # $filterfor = "$filterfor'$userid'"
+      $filterfor = '&$filter=id in '
+      $filterfor = "$filterfor('$($userid -join ("','"))')"
+    }
+
+
+
+    if ($basicInfoOnly) {
+      $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,accountEnabled,onPremisesSamAccountName,userType'
+      $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
+      if ($result){
+        if ($EnablebUsersOnly -and $result.value) {$result.value = $result.value |Where-Object accountEnabled -eq "True"}
+        $result.value
+      }
+      
+      return
+    }
+
+    # $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
+    $needsB2C = $null
+    $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
+        
+    try {
+      $result = Invoke-MgGraphRequest -Method GET "$basicpoll,signInActivity$filterfor" -OutputType PSObject
+      $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "No errors getting this information from M365"
+
+    }
+    catch {
+      $er = $error[0]
+      $needsB2C = $er.ErrorDetails -like "*Neither tenant is B2C or tenant has premium license*"
+      if ($needsB2C) {
+        $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
+        $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
+        $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "Can not get signInActivity, since tenant is neither B2C or has premium license"
+      }
+    }
+
+    if ($result) {
+      $users = $result.value
+      if ($EnablebUsersOnly -and $users) {$users = $users|Where-Object accountEnabled -eq "True"}
+      if ($showMailBox) {
+        $users | Add-Member -NotePropertyName "MailSize" -NotePropertyValue ""
+        $users | Add-Member -NotePropertyName "MailSizeLimit" -NotePropertyValue ""
+        $users | Add-Member -NotePropertyName "MailBoxType" -NotePropertyValue ""
+        $users | Add-Member -NotePropertyName "LastUserMailAction" -NotePropertyValue ""
+
+      }
+      if ($ShowMFA) {
+        $users | Add-Member -NotePropertyName "MFAInfo" -NotePropertyValue ""
+      }
+
+      $lic = Get-365licenses
+      foreach ($user in $users) {
+        $userskus = @()
+        $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json -Compress
+
+        foreach ($userlic in $user.licenseAssignmentStates ) {
+          $alic = ($lic | Where-Object skuid -eq $userlic.skuid).SkuPartNumber #?? $userlic.skuid
+          if (!$alic) { $alic = $userlic.skuid }
+          if ($userlic.state -ne "Active") { $alic = "$alic <$($userlic.state)>" }
+          $userskus += $alic
+        }
+        $user.licenseAssignmentStates = $userskus | ConvertTo-Json -Compress
+
+        if ($user.signInActivity) { $user.signInActivity = $user.signInActivity | Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime | ConvertTo-Json -Compress }
+        write-verbose " this next section checks exchangeonline"
+            
+        if ($showMailBox -and $user.mail ) {
+          #  try{
+          #  $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
+          $maildetail = Get-exomailboxStatistics  -UserPrincipalName $user.mail -Properties MailboxTypeDetail, SystemMessageSizeShutoffQuota, LastUserActionTime -ErrorAction SilentlyContinue
+          if ($maildetail.MailboxTypeDetail) {
+            $user.MailSize = $maildetail.TotalItemSize
+            $user.MailSizeLimit = $maildetail.SystemMessageSizeShutoffQuota
+            $user.MailBoxType = $maildetail.MailboxTypeDetail
+            $user.LastUserMailAction = $maildetail.LastUserActionTime
+          }
+          else {
+            <# Action when all if and elseif conditions are false #>
+            $user.mail = ""
+            $user.proxyAddresses = "" 
+          }
+        }
+        # catch{
+        #   $user.mail =""
+        #   $user.proxyAddresses ="" 
+        # }
+        # }       
+        if ($ShowMFA) {
+          $user.MFAInfo = Get-365UserMFAMethods -userId $user.id | ConvertTo-Json -Compress
+        } 
+        $user
+      }
+    }
+      else {
+        write-host "Get-365user: Did not find any user entries based on $filterfor"
+      }
+
+      # $users
     
   }
-  if ($userid) {
-    # $filterfor = '&$filter=id eq '
-    # $filterfor = "$filterfor'$userid'"
-    $filterfor = '&$filter=id in '
-    $filterfor = "$filterfor('$($userid -join ("','"))')"
-  }
-
-  if ($basicInfoOnly) {
-    $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,accountEnabled,onPremisesSamAccountName,userType'
-    $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
-    $result.value
-    return
-  }
-
-  # $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
-  $needsB2C = $null
-  $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
-        
-  try {
-    $result = Invoke-MgGraphRequest -Method GET "$basicpoll,signInActivity$filterfor" -OutputType PSObject
-    $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "No errors getting this information from M365"
-
-  }
-  catch {
-    $er = $error[0]
-    $needsB2C = $er.ErrorDetails -like "*Neither tenant is B2C or tenant has premium license*"
-    if ($needsB2C) {
-      $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
-      $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
-      $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "Can not get signInActivity, since tenant is neither B2C or has premium license"
-    }
-  }
-  if ($result) {
-    $users = $result.value
-    if ($showMailBox) {
-
-      # if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
-      #   write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-        
-      #   if (-not(Get-InstalledModule ExchangeOnlineManagement)) { 
-      #     Write-Host "Microsoft ExchangeOnlineManagement module not found" -ForegroundColor Black -BackgroundColor Yellow
-      #     $install = Read-Host "Do you want to install the Microsoft Graph Module?"
-        
-      #     if ($install -match "[yY]") {
-      #       Install-Module ExchangeOnlineManagement -Repository PSGallery -Scope CurrentUser -AllowClobber -Force
-      #     }
-      #     else {
-      #       Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
-      #     } 
-      #   }
-      #   Connect-ExchangeOnline -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
-      # }
-                  
-       
-      $users | Add-Member -NotePropertyName "MailSize" -NotePropertyValue ""
-      $users | Add-Member -NotePropertyName "MailSizeLimit" -NotePropertyValue ""
-      $users | Add-Member -NotePropertyName "MailBoxType" -NotePropertyValue ""
-      $users | Add-Member -NotePropertyName "LastUserMailAction" -NotePropertyValue ""
-
-    }
-    if ($ShowMFA) {
-      $users | Add-Member -NotePropertyName "MFAInfo" -NotePropertyValue ""
-    }
-    $lic = Get-365licenses
-    foreach ($user in $users) {
-      $userskus = @()
-      $user.proxyAddresses = ($user.proxyAddresses | Where-Object { $_ -like "SMTP*" }) -replace ("SMTP:", "") | ConvertTo-Json -Compress
-
-      foreach ($userlic in $user.licenseAssignmentStates ) {
-        $alic = ($lic | Where-Object skuid -eq $userlic.skuid).SkuPartNumber #?? $userlic.skuid
-        if (!$alic) { $alic = $userlic.skuid }
-        if ($userlic.state -ne "Active") { $alic = "$alic <$($userlic.state)>" }
-        $userskus += $alic
-      }
-      $user.licenseAssignmentStates = $userskus | ConvertTo-Json -Compress
-
-      if ($user.signInActivity) { $user.signInActivity = $user.signInActivity | Select-Object lastSignInDateTime, lastNonInteractiveSignInDateTime | ConvertTo-Json -Compress }
-      write-verbose " this next section checks exchangeonline"
-            
-      if ($showMailBox -and $user.mail ) {
-        #  try{
-        #  $maildetail = Get-MailboxStatistics -Identity $user.mail -ErrorAction SilentlyContinue |Select-Object DisplayName, TotalItemSize, SystemMessageSizeShutoffQuota, MailboxTypeDetail,LastUserActionTime -ErrorAction SilentlyContinue
-        $maildetail = Get-exomailboxStatistics  -UserPrincipalName $user.mail -Properties MailboxTypeDetail, SystemMessageSizeShutoffQuota, LastUserActionTime -ErrorAction SilentlyContinue
-        if ($maildetail.MailboxTypeDetail) {
-          $user.MailSize = $maildetail.TotalItemSize
-          $user.MailSizeLimit = $maildetail.SystemMessageSizeShutoffQuota
-          $user.MailBoxType = $maildetail.MailboxTypeDetail
-          $user.LastUserMailAction = $maildetail.LastUserActionTime
-        }
-        else {
-          <# Action when all if and elseif conditions are false #>
-          $user.mail = ""
-          $user.proxyAddresses = "" 
-        }
-      }
-      # catch{
-      #   $user.mail =""
-      #   $user.proxyAddresses ="" 
-      # }
-      # }       
-      if ($ShowMFA) {
-        $user.MFAInfo = Get-365UserMFAMethods -userId $user.id | ConvertTo-Json -Compress
-      } 
-      $user
-    }
-
-    # $users
-  }
-}
-end {}
+  end {}
 }
 
 <#
@@ -589,7 +597,9 @@ Connect-365
 #>
 Function Connect-365 {
   [CmdletBinding()]
-  param()
+  param(
+    [Switch]$SilentifAlreadyConnected
+  )
   # Check if MS Graph module is installed
   if (-not(Get-InstalledModule Microsoft.Graph)) { 
     Write-Host "Microsoft Graph module not found" -ForegroundColor Black -BackgroundColor Yellow
@@ -607,7 +617,7 @@ Function Connect-365 {
   $connections = (get-365Whoami -DontElaborate).MgGraph
   # Connect to Graph
   if ($connections) {
-    write-host "Connect-365: you are connected to MgGraph with userPrincipleName = $connections"
+    if (!$SilentifAlreadyConnected) { write-host "Connect-365: you are connected to MgGraph with userPrincipleName = $connections" }
     $mgCOntext = Get-MgContext 
     write-verbose "Scopes are $($mgCOntext.scopes|ConvertTo-Json -Compress)"
     return
@@ -648,20 +658,48 @@ gets detail showing admin roles assigned to any user
 
 #>
 Function Get-365Admins {
-  # <#
-  # .SYNOPSIS
-  #   Get all user with an Admin role
-  # #>
-  process {
+  [CmdletBinding()]
+  param (
+
+  )
+
+  begin {
     Connect-365 
-    $admins = Get-MgDirectoryRole | Select-Object DisplayName, Id | 
-    ForEach-Object { $role = $_.DisplayName; Get-MgDirectoryRoleMember -DirectoryRoleId $_.id | 
-      Where-Object { $_.AdditionalProperties."@odata.type" -eq "#microsoft.graph.user" } | 
-      ForEach-Object { Get-365User -userId $_.id -basicInfoOnly }
-    } | Where-Object { $_.AccountEnabled -eq "True" } |
-    Select-Object @{Name = "Role"; Expression = { $role } }, DisplayName, UserPrincipalName, Mail, Id | Sort-Object -Property Mail -Unique
-      
-    return $admins
+  }
+  process {
+
+      $adminRoies = Get-MgDirectoryRole | Select-Object DisplayName, Id, Description
+    ForEach ($role in $adminRoies) {    
+      $users = Get-MgDirectoryRoleMember -DirectoryRoleId $role.id | Where-Object { $_.AdditionalProperties."@odata.type" -eq "#microsoft.graph.user" } | Get-365user -basicInfoOnly -EnablebUsersOnly
+      if ($users) {
+        foreach ($user in $users) {
+          if ($user)
+          {
+          $result = [PSCustomObject]@{
+           Role              = $role.DisplayName
+           userPrincipalName = $user.UserPrincipalName
+           userDisplayname    = $user.DisplayName
+           Descripion        = $role.Description
+           # roleid            = $role.Id
+          }
+          $result
+        }
+        }
+      }
+     }
+     
+
+
+    # return $admins
+    <#
+role              : Teams Administrator
+displayName       : Antony Wiles
+userPrincipalName : antony@KissITnz.onmicrosoft.com
+mail              : antony@KissITnz.onmicrosoft.com
+id                : 64650ade-5d0b-4510-9450-80c0a50293d4
+#>
+
+
   }
 }
 
@@ -687,9 +725,8 @@ Function Get-365Admins {
 Function Get-365UserMFAMethods {
   [CmdletBinding()]
   param(
-    [Parameter(Mandatory = $true,ParameterSetName = 'Name', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [alias('Name')]
-    [Parameter(Mandatory = $true)]
     [string[]] $userId
   )
   begin {
@@ -700,94 +737,99 @@ Function Get-365UserMFAMethods {
     # Get MFA details for each user
     #[array]
 
-    foreach ($auser in $userId)
-    {
-     write-verbose "Get-365UserMFAMethods: getting MFA for user  $auser"
-   [array]$mfaData = Get-MgUserAuthenticationMethod -UserId $auser
-    if (!$mfaData) { return }
+    foreach ($auser in $userId) {
+      write-verbose "Get-365UserMFAMethods: getting MFA for user  $auser"
+      try {
+        [array]$mfaData = Get-MgUserAuthenticationMethod -UserId $auser  -ErrorAction SilentlyContinue
+      }
+      catch {
+        return
+      }
+    
+      if (!$mfaData) { return }
   
-    # Create MFA details object
-    $mfaMethods = [PSCustomObject][Ordered]@{
-
-      status                = ""
-      authApp               = ""
-      phoneAuth             = ""
-      fido                  = ""
-      helloForBusiness      = ""
-      helloForBusinessCount = 0
-      emailAuth             = ""
-      tempPass              = ""
-      passwordLess          = ""
-      softwareAuth          = ""
-      authDevice            = ""
-      authPhoneNr           = ""
-      SSPREmail             = ""
-      OtherInfo             = ""
+      # Create MFA details object
+      $mfaMethods = [PSCustomObject][Ordered]@{
+        Name                  = $auser
+        status                = ""
+        authApp               = ""
+        phoneAuth             = ""
+        fido                  = ""
+        helloForBusiness      = ""
+        helloForBusinessCount = 0
+        emailAuth             = ""
+        tempPass              = ""
+        passwordLess          = ""
+        softwareAuth          = ""
+        authDevice            = ""
+        authPhoneNr           = ""
+        SSPREmail             = ""
+        OtherInfo             = ""
         
-    }
+      }
   
-    ForEach ($method in $mfaData) {
-      Switch ($method.AdditionalProperties["@odata.type"]) {
-        "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod" { 
-          # Microsoft Authenticator App
-          $mfaMethods.authApp = $true
-          $mfaMethods.authDevice += "$($method.AdditionalProperties["displayName"]),"
-          $mfaMethods.status = "enabled"
-        } 
-        "#microsoft.graph.phoneAuthenticationMethod" { 
-          # Phone authentication
-          $mfaMethods.phoneAuth = $true
-          $mfaMethods.authPhoneNr = $method.AdditionalProperties["phoneType", "phoneNumber"] -join ' '
-          $mfaMethods.status = "enabled"
-        } 
-        "#microsoft.graph.fido2AuthenticationMethod" { 
-          # FIDO2 key
-          $mfaMethods.fido = $true
-          $mfaMethods.otherInfo += "Fido-Model:$($method.AdditionalProperties["model"]),"
-          $mfaMethods.status = "enabled"
-        } 
-        "#microsoft.graph.passwordAuthenticationMethod" { 
-          # Password
-          # When only the password is set, then MFA is disabled.
-          if ($mfaMethods.status -ne "enabled") { $mfaMethods.status = "disabled" }
-        }
-        "#microsoft.graph.windowsHelloForBusinessAuthenticationMethod" { 
-          # Windows Hello
-          $mfaMethods.helloForBusiness = $true
-          $mfaMethods.otherInfo += "Hello-Device:$($method.AdditionalProperties["displayName"]),"
-          $mfaMethods.status = "enabled"
-          $mfaMethods.helloForBusinessCount++
-        } 
-        "#microsoft.graph.emailAuthenticationMethod" { 
-          # Email Authentication
-          $mfaMethods.emailAuth = $true
-          $mfaMethods.SSPREmail = $method.AdditionalProperties["emailAddress"] 
-          $mfaMethods.status = "enabled"
-        }               
-        "microsoft.graph.temporaryAccessPassAuthenticationMethod" { 
-          # Temporary Access pass
-          $mfaMethods.tempPass = $true
-          $mfaMethods.otherInfo += "TempPass-LifeTime:$($method.AdditionalProperties["lifetimeInMinutes"]),"
-          $mfaMethods.status = "enabled"
-        }
-        "#microsoft.graph.passwordlessMicrosoftAuthenticatorAuthenticationMethod" { 
-          # Passwordless
-          $mfaMethods.passwordLess = $true
-          $mfaMethods.otherInfo += "passwordless-devicve:$($method.AdditionalProperties["displayName"]),"
-          $mfaMethods.status = "enabled"
-        }
-        "#microsoft.graph.softwareOathAuthenticationMethod" { 
-          # ThirdPartyAuthenticator
-          $mfaMethods.softwareAuth = $true
-          $mfaMethods.status = "enabled"
+      ForEach ($method in $mfaData) {
+        Switch ($method.AdditionalProperties["@odata.type"]) {
+          "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod" { 
+            # Microsoft Authenticator App
+            $mfaMethods.authApp = $true
+            $mfaMethods.authDevice += "$($method.AdditionalProperties["displayName"]),"
+            $mfaMethods.status = "enabled"
+          } 
+          "#microsoft.graph.phoneAuthenticationMethod" { 
+            # Phone authentication
+            $mfaMethods.phoneAuth = $true
+            $mfaMethods.authPhoneNr = $method.AdditionalProperties["phoneType", "phoneNumber"] -join ' '
+            $mfaMethods.status = "enabled"
+          } 
+          "#microsoft.graph.fido2AuthenticationMethod" { 
+            # FIDO2 key
+            $mfaMethods.fido = $true
+            $mfaMethods.otherInfo += "Fido-Model:$($method.AdditionalProperties["model"]),"
+            $mfaMethods.status = "enabled"
+          } 
+          "#microsoft.graph.passwordAuthenticationMethod" { 
+            # Password
+            # When only the password is set, then MFA is disabled.
+            if ($mfaMethods.status -ne "enabled") { $mfaMethods.status = "disabled" }
+          }
+          "#microsoft.graph.windowsHelloForBusinessAuthenticationMethod" { 
+            # Windows Hello
+            $mfaMethods.helloForBusiness = $true
+            $mfaMethods.otherInfo += "Hello-Device:$($method.AdditionalProperties["displayName"]),"
+            $mfaMethods.status = "enabled"
+            $mfaMethods.helloForBusinessCount++
+          } 
+          "#microsoft.graph.emailAuthenticationMethod" { 
+            # Email Authentication
+            $mfaMethods.emailAuth = $true
+            $mfaMethods.SSPREmail = $method.AdditionalProperties["emailAddress"] 
+            $mfaMethods.status = "enabled"
+          }               
+          "microsoft.graph.temporaryAccessPassAuthenticationMethod" { 
+            # Temporary Access pass
+            $mfaMethods.tempPass = $true
+            $mfaMethods.otherInfo += "TempPass-LifeTime:$($method.AdditionalProperties["lifetimeInMinutes"]),"
+            $mfaMethods.status = "enabled"
+          }
+          "#microsoft.graph.passwordlessMicrosoftAuthenticatorAuthenticationMethod" { 
+            # Passwordless
+            $mfaMethods.passwordLess = $true
+            $mfaMethods.otherInfo += "passwordless-devicve:$($method.AdditionalProperties["displayName"]),"
+            $mfaMethods.status = "enabled"
+          }
+          "#microsoft.graph.softwareOathAuthenticationMethod" { 
+            # ThirdPartyAuthenticator
+            $mfaMethods.softwareAuth = $true
+            $mfaMethods.status = "enabled"
+          }
         }
       }
-    }
-    $mfaMethods.authDevice = $mfaMethods.authDevice.trim(",", " ")
-    $mfaMethods.otherInfo = $mfaMethods.otherInfo.trim(",", " ")
+      $mfaMethods.authDevice = $mfaMethods.authDevice.trim(",", " ")
+      $mfaMethods.otherInfo = $mfaMethods.otherInfo.trim(",", " ")
 
-    $mfaMethods
-  }
+      $mfaMethods
+    }
   }
 }
 

@@ -571,11 +571,15 @@ this is a very simple summary of get-mgdomain
 function Get-365Domains {
   [CmdletBinding()]
   param (
-        
+        [switch]$EmailEnabled
   )
   Connect-365 
   #get list of domains in M365
   $domains = get-mgdomain | Select-Object id, isdefault, isverified, supportedServices
+  if ($EmailEnabled)
+  {
+    $domains = $domains |Where-Object supportedServices -contains "Email"
+  }
   return $domains
 
 }

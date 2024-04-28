@@ -356,7 +356,7 @@ function  Get-365user {
     }
     catch {
       $er = $error[0]
-      $needsB2C = $er.ErrorDetails -like "*Neither tenant is B2C or tenant has premium license*"
+      $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
       if ($needsB2C) {
         $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
         $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
@@ -1021,6 +1021,26 @@ function Disable-365SMXOutboundConnector {
   Get-OutboundConnector | Where-Object SmartHosts -like "365.*.smxemail.com"
 
 }
+
+
+function get-365Commands {
+  [CmdletBinding()]
+  param (
+    
+  )
+  
+  begin {
+    
+  }
+  
+  process {
+    Get-Command -Module toolsFor365
+  }
+  
+  end {
+    
+  }
+}
 #write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
 #write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
 #write-host 'Connect-ExchangeOnline' -ForegroundColor green
@@ -1049,3 +1069,21 @@ write-host "Resolve-DNSSUmmary"
 
 
 
+function get-365Commands {
+  [CmdletBinding()]
+  param (
+    
+  )
+  
+  begin {
+    
+  }
+  
+  process {
+    Get-Command -Module toolsFor365
+  }
+  
+  end {
+    
+  }
+}

@@ -37,9 +37,6 @@ DNS_mx               : mx1.nz.smxemail.com, mx2.nz.smxemail.com
 M365_DKIM_Configured : True
 DNS_DKIM_SMX         : smx1.imatec-co-nz-694f55df.dkim.smxemail.com, smx2.imatec-co-nz-694f55df.dkim.smxemail.com
 DNS_DKIM_M365        : selector1-imatec-co-nz._domainkey.kissitnz.onmicrosoft.com, selector2-imatec-co-nz._domainkey.kissitnz.onmicrosoft.com
-
-
-.NOTES
 #>
 function Get-365DNSInfo {
   [CmdletBinding()]
@@ -130,16 +127,10 @@ has an alias of id
 the FQN (Domain) that needs to be resolve
 The MUST be the DOMAIN suffix only, do not include the hostname
 i.e use imatec.co.nz , and not wwww.imatec.co.nz
-
-   
-
-
+ 
 .EXAMPLE
 Resolve-DNSSummary -Domain imatec.co.nz   
 Resolve-DNSSummary -Name imatec.co.nz       
-
-.NOTES
-General notes
 #>
 function Resolve-DNSSummary {
   [CmdletBinding()]
@@ -230,9 +221,6 @@ returns a summary of all MS subscription / license that are configured
 
 .EXAMPLE
 Get-365licenses
-
-.NOTES
-
 #>
 function  Get-365licenses {
   [CmdletBinding()]
@@ -276,15 +264,9 @@ allows you to retrieve data about just ONE user
 
 .EXAMPLE
 get-365user
-
 get-365user -userPrincipalName info@hinterlandtours.co.nz
-
 get-365user |export-csv -NoTypeInformation listOfUsers.csv
-
 $variable = get-365user
-
-.NOTES
-General notes
 #>
 function  Get-365user {
   [CmdletBinding()]
@@ -490,7 +472,7 @@ get-365Whoami -checkIfSignedInTo MgGraph
 returns just the UserPrincipalName signed into MgGraph (if any)
 returns
 *@*.co.nz
-.NOTES
+
 
 #>
 function Get-365Whoami {
@@ -602,7 +584,6 @@ some scripts may need to connect to ExchangeOnline Also - in that case the scrip
 .EXAMPLE
 disconnect-365 
 Connect-365
-
 #>
 Function Connect-365 {
   [CmdletBinding()]
@@ -649,7 +630,6 @@ disconnects from MgGraph, AND ExchangeOnline
 
 .EXAMPLE
 connects to MgGraph
-
 #>
 function Disconnect-365 {
   disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
@@ -663,13 +643,10 @@ gets detail showing admin roles assigned to any user
 
 .DESCRIPTION
 gets detail showing admin roles assigned to any user
-
-
 #>
 Function Get-365Admins {
   [CmdletBinding()]
   param (
-
   )
 
   begin {
@@ -697,18 +674,6 @@ Function Get-365Admins {
       }
      }
      
-
-
-    # return $admins
-    <#
-role              : Teams Administrator
-displayName       : Antony Wiles
-userPrincipalName : antony@KissITnz.onmicrosoft.com
-mail              : antony@KissITnz.onmicrosoft.com
-id                : 64650ade-5d0b-4510-9450-80c0a50293d4
-#>
-
-
   }
 }
 
@@ -727,9 +692,6 @@ id                : 64650ade-5d0b-4510-9450-80c0a50293d4
   Get-365UserMFAMethods -userId sean.macey@imatec.co.nz -verbose
 
   Get-365UserMFAMethods -userId fe636523-5608-438d-83f5-41b5c9a7fe95
-  
-  .NOTES
-  General notes
   #>
 Function Get-365UserMFAMethods {
   [CmdletBinding()]
@@ -879,14 +841,17 @@ creates a new SMX to 365 mail connector
 
 .DESCRIPTION
 creates a new SMX to 365 mail connector
-this enable mail to transit from SMX towards 365
+this enables mail to transit from SMX towards 365
+
 this CMD also configured the Skip listing (also needed by SMX)
+
+ANd also creates a DISABLED Mail handing rule that rejects mail messages that are not sent via SMX
+- that rule should only be enabled when you are sure that no systems will send directly to 365 MAil-Gateways, and must also be disabled if the SMX Inbount Connector is disabled.
+   To Enable SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Enable-TransportRule
+   To DISABLE SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Disable-TransportRule
 
 .EXAMPLE
 An example
-
-.NOTES
-General notes
 #>
 function New-365SMXInboundConnector {
   [CmdletBinding()]
@@ -894,7 +859,8 @@ function New-365SMXInboundConnector {
   connect-365
   Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
-
+  Remove-365SMXRuleConnectionFIlter
+  New-365RuleOnlyAcceptInboundMailFromSMX 
   $prev = Get-InboundConnector |Where-Object SenderIPAddresses -like "*113.197.64.0*"
   if ($prev) {#.SenderIPAddresses -contains "113.197.67.0/24") {
     write-host "An inbound Connector for SMX already exits, If you wish to recreate it first delete '$($prev.Identity)'"
@@ -902,6 +868,7 @@ function New-365SMXInboundConnector {
   }
   $senderIps = "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24"
   New-InboundConnector -Name "SMX-inbound-365" -ConnectorType Partner -Enabled $true -RequireTls $True -SenderIPAddresses $senderIps -EFSkipIPs $senderIps -SenderDomains "smtp:*"
+  Write-Host "SMX Inbound Connector Created and Enabled, Remember should you disable this; make sure to also DISABLE the MAIL rule: Only accept inbound mail from SMX"
 
 }
 
@@ -948,7 +915,10 @@ function New-365SMXOutboundConnector {
   Write-host "When this connector is enabled all email traffic will be sent to it -=> so you better make sure the SMX, SPF,DKIM configurations are correct first " -ForegroundColor Yellow
 
   write-host ""
-  write-Host "IMPORTANT: to avoid production impacts this script does not ENABLE the connector, once you are certain that all SPF, MX, DKIM and SMX configuration is correct( and only then) you should Enable-365SMXOutboundConnector"
+  write-Host "IMPORTANT: to avoid production impacts this script does not ENABLE the connector, once you are certain that all SPF, MX, DKIM and SMX configuration is correct( and only then) "
+  Write-host "To Enable SMX Inbound Mail COnnector ==> Enable-365SMXOutboundConnector" -ForegroundColor   DarkYellow
+  Write-host "To DISABLE SMX Inbound Mail COnnector==> Disable-365SMXOutboundConnector | Disable-TransportRule" -ForegroundColor     Green
+
 }
 
 
@@ -1001,7 +971,6 @@ use this when you want to to M365 from sending emails through SMX filtering
 
 .EXAMPLE
 Disable-365SMXOutboundConnector
-
 #>
 function Disable-365SMXOutboundConnector {
   [CmdletBinding()]
@@ -1024,72 +993,165 @@ function Disable-365SMXOutboundConnector {
 }
 
 
-function get-365Commands {
-  [CmdletBinding()]
+
+<#
+.SYNOPSIS
+generates a list of CMDlets within this script/module
+
+.DESCRIPTION
+generates a list of CMDlets within this script/module
+FYI: if this script is renamed as  a *.psm1 (instead of a *.ps1) 
+ then installed within a folder "toolsFor365" under the powershell\modules
+ the result will be you can call these commands without first manaully importing the script.
+
+.EXAMPLE
+Get-365Command
+#>
+function Get-365Command {
   param (
     
   )
-  
-  begin {
-    
-  }
-  
-  process {
-    Get-Command -Module toolsFor365
-  }
-  
-  end {
-    
-  }
-}
-#write-Host 'Load this script (or save it as .psm1 module), before trying to call any functions within it'
-#write-host 'Connect-MgGraph -Scopes "User.Read.All","Group.Read.All","AuditLog.Read.All","Mail.Read","Domain.Read.All","RoleManagement.Read.All","Policy.Read.All","Directory.Read.All","Organization.Read.All"  ' -ForegroundColor green
-#write-host 'Connect-ExchangeOnline' -ForegroundColor green
+     $c = Get-Command -Module toolsFor365
+    if ($c) {$c ; return}
+    write-host "Get-365Command: will only show you the Full lis of commands when toolFor365 is installed as a Module (*.psm1)"
+    write-host "since you ran this script as . ./toolsFor365.ps1 function the list below is manual and may be inaccurate"
+    write-Host "
+    CommandType     Name                                               Version    Source
+    -----------     ----                                               -------    ------
+    Function        Connect-365                                        0.0        toolsFor365
+    Function        Connect-JustToExchange                             0.0        toolsFor365
+    Function        Disable-365SMXOutboundConnector                    0.0        toolsFor365
+    Function        Disconnect-365                                     0.0        toolsFor365
+    Function        Enable-365SMXOutboundConnector                     0.0        toolsFor365
+    Function        Get-365Admins                                      0.0        toolsFor365
+    Function        Get-365Commands                                    0.0        toolsFor365
+    Function        Get-365DNSInfo                                     0.0        toolsFor365
+    Function        Get-365Domains                                     0.0        toolsFor365
+    Function        Get-365licenses                                    0.0        toolsFor365
+    Function        Get-365RuleOnlyAcceptInboundMailFromSMX            0.0        toolsFor365
+    Function        Get-365user                                        0.0        toolsFor365
+    Function        Get-365UserMFAMethods                              0.0        toolsFor365
+    Function        Get-365Whoami                                      0.0        toolsFor365
+    Function        New-365RuleOnlyAcceptInboundMailFromSMX            0.0        toolsFor365
+    Function        New-365SMXInboundConnector                         0.0        toolsFor365
+    Function        New-365SMXOutboundConnector                        0.0        toolsFor365
+    Function        Remove-365SMXRuleConnectionFIlter                  0.0        toolsFor365
+    Function        Resolve-DNSSummary                                 0.0        toolsFor365    
+    "
+
+ }
+
 <#
-write-Host '. .\toolsFor365' -ForegroundColor green
-write-host 'get-365DNSInfo' -ForegroundColor green
-write-host 'get-365Licenses' -ForegroundColor green
-write-host 'get-365User' -ForegroundColor green
-write-host 'get-365whoami' -ForegroundColor green
-write-host 'get-365Domains' -ForegroundColor green
-write-host 'get-365MFAMethods' -ForegroundColor green
+.SYNOPSIS
+removes any IP associated with SMX from the email spam MS allow list
+
+.DESCRIPTION
+removes any IP associated with SMX from the email spam MS allow list
+ Reaason: To ensure SMX 365 & Office 365 works in a dual filtering mode, you must remove the SMX IP addresses,
+since leaving the connection filter IPs in place will bypass EOP scanning for messages originating from SMX. 
+- this is called by the New-365SMXInboundConnector     
+
+.EXAMPLE
+Remove-365SMXRuleConnectionFIlter
 #>
-
-
-#beta methods, not yet avail in mggraph prod
-#https://graph.microsoft.com/beta/me/authentication/signInPreferences
-
-<#
-get-childitem function:$_ | Where-Object Name -Like "*-365*" | ForEach-Object $_.Name { write-host "$($_.name)" }
-write-host "Connect-JustExchange"
-write-host "Resolve-DNSSUmmary"
-
-#>
-
-write-host "To see all Commands within toolFor365 type: GET-365Commands" -ForegroundColor Yellow
-
-#get-childitem function:$_ |Where-Object Name -notLike "*-365*" |Select-Object -Property *
-
-#get-childitem function:$_  |Where-Object Name -NotLike "*:*"
-#get-childitem function:$_  |Where-Object Source -EQ "" |Where-Object Name -NotLike "*:*" |Select-Object name, PSPath,PSDrive,PSProvider, PSIsCOntainer,Source,ModuleName
-
-
-
-function get-365Commands {
+function Remove-365SMXRuleConnectionFIlter {
   [CmdletBinding()]
   param (
-    
-  )
-  
-  begin {
-    
-  }
-  
-  process {
-    Get-Command -Module toolsFor365
-  }
-  
-  end {
-    
-  }
+   )
+   $senderIps = "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24","113.197.64.0/22","203.84.134.0/25"
+   $cfilter =  Get-HostedConnectionFilterPolicy
+
+   $IPAllowList = $cfilter.IPAllowList
+  $newIpFilter = @()
+  $wasFound = ""
+   foreach ($anAllow in  $IPAllowList)
+   {
+
+    if (!($anAllow -in $senderIps))
+    {
+    $newIpFilter += $anAllow
+    $wasFound
+    }
+   }
+$newIpFilter
+if ($wasFound){
+  write-host "365 Hosted Connection Filter contained IP ranges for SMX - these have been removed"
+  write-host "Reaason: To ensure SMX 365 & Office 365 works in a dual filtering mode, you must remove the SMX IP addresses,"
+  write-Host "since leaving the connection filter IPs in place will bypass EOP scanning for messages originating from SMX. "
 }
+    $cfilter | set-HostedConnectionFilterPolicy -IPAllowList $newIpFilter
+  
+}
+
+<#
+.SYNOPSIS
+Creates a MAIL handling rule to ensure ONLY SMX can deliver mail to 365
+
+.DESCRIPTION
+Creates a MAIL handling rule to ensure ONLY SMX can deliver mail to 365
+be careful when enabling this rule, sice if you have any system that send mail directly to the 365 Mail relays, then they will FAIL
+For safety reasons this rule is created in DISABLED mode
+   To Enable SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Enable-TransportRule
+   To DISABLE SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Disable-TransportRule
+
+.PARAMETER DontElaborate
+Parameter description
+
+.EXAMPLE
+New-365RuleOnlyAcceptInboundMailFromSMX
+New-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate  
+#>
+function New-365RuleOnlyAcceptInboundMailFromSMX {
+
+   param(
+    [switch]$DontElaborate
+   )
+
+   $Rules = Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
+      if ($rules) {if (!$DontElaborate) {Write-Host "The MAIL transport rule to Prevent email delivery from any source aother than SMX already exists"}}
+   else {
+    New-TransportRule -Name "Only accept inbound mail from SMX" -ExceptIfSenderIpRanges "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24" -SetAuditSeverity DoNotAudit -ExceptIfMessageTypeMatches Calendaring -FromScope NotInOrganization -Enabled $false -DeleteMessage $true |Out-Null
+   }
+   Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate:$DontElaborate
+}
+
+<#
+.SYNOPSIS
+Gets detail about any MAIL handling rules that force mail only via SMX
+
+.DESCRIPTION
+Gets detail about any MAIL handling rules that force mail only via SMX
+   To Enable SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Enable-TransportRule
+   To DISABLE SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Disable-TransportRule
+
+.PARAMETER DontElaborate
+if used then the CMDLet will provide feedback (other than any rule(s) if found)
+
+.EXAMPLE
+ Get-365RuleOnlyAcceptInboundMailFromSMX
+ Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
+#>
+function Get-365RuleOnlyAcceptInboundMailFromSMX {
+ # [CmdletBinding()]
+  param(
+   [switch]$DontElaborate
+  )
+   $rules = Get-TransportRule  |Where-Object {($_.FromScope -like "NotInOrganization") -and ($_.Description -like "*Delete the message without notifying the recipient*113.197.64.0*" )}
+
+  if ($DontElaborate -ne $True) {
+    write-host "Rules were found, If enabled they will prevent mail from from ANY SOURCE other than SMX" -ForegroundColor Yellow
+    $rules | ForEach-Object {
+      write-host "$($_.Description)"
+    }
+    Write-host "To Enable SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Enable-TransportRule" -ForegroundColor   DarkYellow
+    Write-host "To DISABLE SMX Mail transport rules, pipe the output of the Commmand => Get-365RuleOnlyAcceptInboundMailFromSMX | Disable-TransportRule" -ForegroundColor     Green
+  }
+  
+  $rules
+}
+
+
+write-host "If this is installed as a Module (*.psm1), the you can see all Command with: GET-365Commands" -ForegroundColor Yellow
+
+
+

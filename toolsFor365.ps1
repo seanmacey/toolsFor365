@@ -1058,9 +1058,14 @@ write-host 'get-365MFAMethods' -ForegroundColor green
 #beta methods, not yet avail in mggraph prod
 #https://graph.microsoft.com/beta/me/authentication/signInPreferences
 
+<#
 get-childitem function:$_ | Where-Object Name -Like "*-365*" | ForEach-Object $_.Name { write-host "$($_.name)" }
 write-host "Connect-JustExchange"
 write-host "Resolve-DNSSUmmary"
+
+#>
+
+write-host "To see all Commands within toolFor365 type: GET-365Commands" -ForegroundColor Yellow
 
 #get-childitem function:$_ |Where-Object Name -notLike "*-365*" |Select-Object -Property *
 

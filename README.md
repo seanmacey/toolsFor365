@@ -2,6 +2,9 @@
   - check which DNS  provider is hosting DNS records
   - Checks the configuration of both 365 and SMX (a Mail filtering service in NZ and AU)
   - Configure 365 connectors and rules for operation with SMX mail filtering
+  - Help Configure DKIM, SPF, and MX records
+  - Report the MFA status of a user
+  - Report the 365 Administrator assignments
 
 either load the script directly using. .\toolsFor365
 

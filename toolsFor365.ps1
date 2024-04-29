@@ -895,9 +895,9 @@ function New-365SMXInboundConnector {
   Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
 
-  $prev = Get-InboundConnector
-  if ($prev.SenderIPAddresses -contains "113.197.67.0/24") {
-    write-host "An inbound Connector fort SMX already exits, If you wish to recreate it first delete '$($prev.Identity)'"
+  $prev = Get-InboundConnector |Where-Object SenderIPAddresses -like "*113.197.64.0*"
+  if ($prev) {#.SenderIPAddresses -contains "113.197.67.0/24") {
+    write-host "An inbound Connector for SMX already exits, If you wish to recreate it first delete '$($prev.Identity)'"
     return
   }
   $senderIps = "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24"

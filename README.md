@@ -1,12 +1,12 @@
 <b>toolsFor365.ps1</b> contains various Commands that can be used to
-check which DNS  provide is hosting a DNS records
-Check the configuration of both 365 and SMX (a Mail filtering service in NZ and AU)
-COnfigure 365 connectors and rules for operation with SMX mail filtering
+  - check which DNS  provider is hosting DNS records
+  - Checks the configuration of both 365 and SMX (a Mail filtering service in NZ and AU)
+  - Configure 365 connectors and rules for operation with SMX mail filtering
 
-either load the script directly using . .\toolsFor365
+either load the script directly using. .\toolsFor365
 or rename the script to <b>toolsFor365.psm1</b>
  - then save the script as a module (check programs\powershell\7\ modules in a new folder also called <b>toolsFor365</b> 
- that script can also be saved as a psm1 (module) in a folder with the same name within the powershell modules folder - then the functions within the script will work as CMDLETS
+ that script can also be saved as a psm1 (module) in a folder with the same name within the PowerShell modules folder - then the functions within the script will work as CMDLETS
 the other files in this repo are just notes or workings
 
 Commands can be listed using <b>Get-365Command</b>

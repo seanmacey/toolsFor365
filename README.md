@@ -12,10 +12,6 @@ the other files in this repo are just notes or workings
 Commands can be listed using <b>Get-365Command</b>
 
 <code>
-get-365Command
-
-CommandType     Name                                               Version    Source
------------     ----                                               -------    ------
 Function        Connect-365                                        0.0        toolsFor365
 Function        Connect-JustToExchange                             0.0        toolsFor365
 Function        Disable-365SMXOutboundConnector                    0.0        toolsFor365

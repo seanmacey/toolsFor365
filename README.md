@@ -11,7 +11,7 @@ the other files in this repo are just notes or workings
 
 Commands can be listed using <b>Get-365Command</b>
 
-
+<code>
 get-365Command
 
 CommandType     Name                                               Version    Source
@@ -35,5 +35,6 @@ Function        New-365SMXInboundConnector                         0.0        to
 Function        New-365SMXOutboundConnector                        0.0        toolsFor365
 Function        Remove-365SMXRuleConnectionFIlter                  0.0        toolsFor365
 Function        Resolve-DNSSummary                                 0.0        toolsFor365
+</code>
 
 

@@ -12,7 +12,7 @@ the other files in this repo are just notes or workings
 Commands can be listed using <b>Get-365Command</b>
 
 
-> get-365Command
+get-365Command
 
 CommandType     Name                                               Version    Source
 -----------     ----                                               -------    ------

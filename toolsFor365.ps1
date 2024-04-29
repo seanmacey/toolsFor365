@@ -185,6 +185,7 @@ function Resolve-DNSSummary {
         { $SOA -Like "*cpanel.com*" } { $arec.Provider = "Domainz.co.nz (server-cpanel.com)" }
         { $SOA -Like "*onlydomains.com*" } { $arec.Provider = "OnlyDomains" }
         { $SOA -Like "*omninet.co.nz*" } { $arec.Provider = "OmniNet" }
+        { $SOA -Like "*nameserverz.com*" } { $arec.Provider = "RimuHost NZ (nameserverz.com)" }
       }
 
       if ($spfDNS -Like "*include:spf.nz.smxemail.com*all") { $arec.SPF_SMX = $true }

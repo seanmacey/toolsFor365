@@ -1013,7 +1013,7 @@ function Get-365Command {
   )
      $c = Get-Command -Module toolsFor365
     if ($c) {$c ; return}
-    write-host "Get-365Command: will only show you the Full lis of commands when toolFor365 is installed as a Module (*.psm1)"
+    write-host "Get-365Command: will only show you the Full list of commands when toolFor365 is installed as a Module (*.psm1)"
     write-host "since you ran this script as . ./toolsFor365.ps1 function the list below is manual and may be inaccurate"
     write-Host "
     CommandType     Name                                               Version    Source
@@ -1150,8 +1150,8 @@ function Get-365RuleOnlyAcceptInboundMailFromSMX {
   $rules
 }
 
+Get-365Command
 
-write-host "If this is installed as a Module (*.psm1), the you can see all Command with: GET-365Commands" -ForegroundColor Yellow
 
 
 

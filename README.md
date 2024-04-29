@@ -4,8 +4,8 @@
   - Configure 365 connectors and rules for operation with SMX mail filtering
 
 either load the script directly using. .\toolsFor365
-or rename the script to <b>toolsFor365.psm1</b>
- - then save the script as a module (check programs\powershell\7\ modules in a new folder also called <b>toolsFor365</b> 
+
+ - or rename the script to <b>toolsFor365.psm1</b> then save  as a module (check programs\powershell\7\ modules in a new folder also called <b>toolsFor365</b> 
  that script can also be saved as a psm1 (module) in a folder with the same name within the PowerShell modules folder - then the functions within the script will work as CMDLETS
 the other files in this repo are just notes or workings
 

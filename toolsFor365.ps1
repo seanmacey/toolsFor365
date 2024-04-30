@@ -340,11 +340,12 @@ function  Get-365user {
     catch {
       $er = $error[0]
       $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
-      if ($needsB2C) {
+     # if ($needsB2C) {
+      #  write-host "HELL $basicpoll$filterfor"
         $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
         $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
         $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "Can not get signInActivity, since tenant is neither B2C or has premium license"
-      }
+     # }
     }
 
     if ($result) {

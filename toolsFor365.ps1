@@ -227,7 +227,7 @@ function  Get-365licenses {
   param (
        
   )
-  Connect-365 
+  Connect-365 -SilentifAlreadyConnected
 
 
   $lic = Get-MgSubscribedSku | Where-Object { ($_.AppliesTo -eq "User") -and ($_.CapabilityStatus -eq "Enabled") } | Select-Object SkuPartNumber, @{n = "Prepaid"; e = { $_.prepaidUNits.Enabled } }, ConsumedUnits, SkuId

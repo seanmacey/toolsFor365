@@ -48,11 +48,11 @@ function Get-365DNSInfo {
   )
   begin {
     Connect-365
-    # if (!(get-365whoami).)  
-    if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
-      write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-      Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
-    }
+    # if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
+    #   write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+    #   Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+    # }
+    Connect-JustToExchange
   }
 
   Process {
@@ -290,8 +290,8 @@ function  Get-365user {
   begin {
     Connect-365 -SilentifAlreadyConnected
     if ($showMailBox) {
-      Connect-JustToExchange
-      Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+     # Connect-JustToExchange
+      Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
     }
   }
 
@@ -329,7 +329,7 @@ function  Get-365user {
     }
 
     # $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
-    $needsB2C = $null
+  #  $needsB2C = $null
     $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
         
     try {
@@ -338,8 +338,8 @@ function  Get-365user {
 
     }
     catch {
-      $er = $error[0]
-      $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
+   #   $er = $error[0]
+    #  $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
      # if ($needsB2C) {
       #  write-host "HELL $basicpoll$filterfor"
         $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
@@ -509,7 +509,8 @@ function Get-365Whoami {
   }
   catch { }
   if ($checkIfSignedInTo -eq "Exchange" ) {
-    return $uExchange
+    $result.UserPrincipalName
+    return
   }
 
 
@@ -818,8 +819,24 @@ if exchangeonlineManagement module is not installed, then it will first install 
 Connect-JustToExchange
 #>
 function Connect-JustToExchange {
-  if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
-    write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
+  param(
+    # Parameter help description
+    [string]$Identity
+  )
+   $isSignedin = get-365Whoami -checkIfSignedInTo Exchange
+ 
+   if (!$Identity) {
+    $Identity = get-365Whoami -checkIfSignedInTo MgGraph
+  }
+
+  if (($isSignedin -ne $Identity) -and $Identity)
+  {
+     Disconnect-ExchangeOnline 
+     $isSIgnedin = $null
+  }
+  
+  if (!$isSIgnedin) {
+    write-host "You need to connect ExchangeOnline ($Identity)" -ForegroundColor Red
   
     if (-not(Get-InstalledModule ExchangeOnlineManagement)) { 
       Write-Host "Microsoft ExchangeOnlineManagement module not found" -ForegroundColor Black -BackgroundColor Yellow
@@ -832,7 +849,7 @@ function Connect-JustToExchange {
         Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
       } 
     }
-    Connect-ExchangeOnline -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+    Connect-ExchangeOnline -UserPrincipalName $Identity
   }
 }
 
@@ -858,7 +875,7 @@ function New-365SMXInboundConnector {
   [CmdletBinding()]
   param ()
   connect-365
-  Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+  Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
   Remove-365SMXRuleConnectionFIlter
   New-365RuleOnlyAcceptInboundMailFromSMX 
@@ -898,7 +915,7 @@ function New-365SMXOutboundConnector {
   )
   connect-365
   #connect-JustToExchange
-  Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+  Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
   switch ($Country) {
     "NZ" { $countrySring = "365.nz.smxemail.com" }
@@ -941,7 +958,7 @@ function Enable-365SMXOutboundConnector {
   param ()
   connect-365
   #connect-JustToExchange
-  Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+  Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
   $prev = Get-OutboundConnector | Where-Object SmartHosts -like "365.*.smxemail.com"
   if (!$prev) {
@@ -978,7 +995,7 @@ function Disable-365SMXOutboundConnector {
   param ()
   connect-365
   #connect-JustToExchange
-  Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
+  Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
   $prevs = Get-OutboundConnector | Where-Object SmartHosts -like "365.*.smxemail.com"
   if (!$prevs) {
@@ -1151,7 +1168,49 @@ function Get-365RuleOnlyAcceptInboundMailFromSMX {
   $rules
 }
 
+function Set-ManagedMailBoxMessageSentCopy {
+  #this function is a work in progress
+  [CmdletBinding(DefaultParameterSetName="UserPrincipalname")]
+  param (
+    [Parameter(ParameterSetName="UserPrincipalname",ValueFromPipeline,ValueFromPipelineByPropertyName)]
+    [Alias("Identity")]
+    [string[]]$UserPrincipalName,
+    [Parameter(ParameterSetName="mailbox",ValueFromPipeline)]
+    [object[]]$mailbox,
+    #[Parameter(Mandatory=$true)]
+    [bool]$KeepSentCopy = $true
+  )
+
+  begin
+  {
+    Connect-JustToExchange
+        if (!$UserPrincipalName -and !$mailbox)
+    {
+      write-host "(!UserPrincipalName -and !mailbox)"
+      (Get-EXOMailbox).UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+      return
+    }
+    if ($mailbox)
+    {
+      Write-Host "(!$UserPrincipalName -and !$mailbox)"
+      ($mailbox.UserPrincipalName) | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+      return
+    }
+  }
+  process
+  {
+    if ($UserPrincipalName)
+     {
+      Write-Host("($UserPrincipalName)")
+     $UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+  }
+}
+}
+
 Get-365Command
+
+
+
 
 
 

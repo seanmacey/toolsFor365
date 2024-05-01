@@ -1175,8 +1175,8 @@ function Set-ManagedMailBoxMessageSentCopy {
     [Parameter(ParameterSetName="UserPrincipalname",ValueFromPipeline,ValueFromPipelineByPropertyName)]
     [Alias("Identity")]
     [string[]]$UserPrincipalName,
-    [Parameter(ParameterSetName="mailbox",ValueFromPipeline)]
-    [object[]]$mailbox,
+    # [Parameter(ParameterSetName="mailbox",ValueFromPipeline)]
+    # [object[]]$mailbox,
     #[Parameter(Mandatory=$true)]
     [bool]$KeepSentCopy = $true
   )
@@ -1184,26 +1184,26 @@ function Set-ManagedMailBoxMessageSentCopy {
   begin
   {
     Connect-JustToExchange
-        if (!$UserPrincipalName -and !$mailbox)
+        if (!$UserPrincipalName) #)-and !$mailbox)
     {
-      write-host "(!UserPrincipalName -and !mailbox)"
+      write-verbose " Connect-JustToExchange !UserPrincipalName given"
       (Get-EXOMailbox).UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
       return
     }
-    if ($mailbox)
-    {
-      Write-Host "(!$UserPrincipalName -and !$mailbox)"
-      ($mailbox.UserPrincipalName) | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
-      return
-    }
+    # if ($mailbox)
+    # {
+    #   Write-Host "(!$UserPrincipalName -and !$mailbox)"
+    #   ($mailbox.UserPrincipalName) | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+    #   return
+    # }
   }
   process
   {
-    if ($UserPrincipalName)
-     {
-      Write-Host("($UserPrincipalName)")
+    # if ($UserPrincipalName)
+    #  {
+    #   Write-Host("($UserPrincipalName)")
      $UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
-  }
+  #}
 }
 }
 

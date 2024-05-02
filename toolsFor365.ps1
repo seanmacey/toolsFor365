@@ -78,16 +78,15 @@ function Get-365DNSInfo {
       $arec = [PSCustomObject]@{
         Name                 = $domainid
         M365_MailEnabled     = $ConnfiguredForMail
-        SOA                  = $resolvedDNS.Provider
         Autodiscover365      = $AutoDiscover365
+        M365_DKIM_Configured = $M365DKIM
+        SOA                  = $resolvedDNS.Provider
         M365_spf             = $spfs
         DNS_spf              = $resolvedDNS.SPF #$spfDNS
         M365_mx              = $MXrecs
         DNS_mx               = $resolvedDNS.MX #$MXinDNS
-        M365_DKIM_Configured = $M365DKIM
         DNS_DKIM_SMX         = $resolvedDNS.DKIM_SMX
         DNS_DKIM_M365        = $resolvedDNS.DKIM_365
-
       }
       $arec
     }

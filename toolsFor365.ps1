@@ -74,8 +74,7 @@ function Get-365DNSInfo {
       $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
       $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
       $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-
-      # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+      $Autodiscover = ($DNSrecs | Where-Object {($_.recordType -eq "CNAME") -and ($_.AdditionalProperties.canonicalName -like "autodiscover.*")}).AdditionalProperties.canonicalName     # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
       # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
 
       # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
@@ -87,6 +86,8 @@ function Get-365DNSInfo {
 
       $resolvedDNS = Resolve-DNSSummary -Domain $domainid
 
+      $AutoDiscover365 = [bool]($Autodiscover -and $resolvedDNS.AutoDiscover )
+
 
       if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
 
@@ -94,6 +95,7 @@ function Get-365DNSInfo {
         Name                 = $domainid
         M365_MailEnabled     = $ConnfiguredForMail
         SOA                  = $resolvedDNS.Provider
+        Autodiscover365 = $AutoDiscover365
         M365_spf             = $spfs
         DNS_spf              = $resolvedDNS.SPF #$spfDNS
         M365_mx              = $MXrecs
@@ -152,6 +154,7 @@ function Resolve-DNSSummary {
       $MxinDNS = (Resolve-DnsName -Name $adomain -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $adomain).NameExchange -join ", " 
       $dnsroot = (Resolve-DnsName -Name $adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
       $www = (Resolve-DnsName -Name www.$adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
+      $Autodiscover = (Resolve-DnsName -Name autodiscover.$adomain -Type CNAME -ErrorAction SilentlyContinue).NameHost
 
 
       $arec = [PSCustomObject]@{
@@ -159,6 +162,7 @@ function Resolve-DNSSummary {
         Home     = $dnsroot
         www      = $www
         Provider = $SOA
+        AutoDiscover = $Autodiscover 
         MX       = $MxinDNS
         DKIM_SMX = ""
         DKIM_365 = ""
@@ -176,7 +180,8 @@ function Resolve-DNSSummary {
         { $SOA -Like "*cpanel.com*" } { $arec.Provider = "Domainz.co.nz (server-cpanel.com)" }
         { $SOA -Like "*onlydomains.com*" } { $arec.Provider = "OnlyDomains" }
         { $SOA -Like "*omninet.co.nz*" } { $arec.Provider = "OmniNet" }
-        { $SOA -Like "*nameserverz.com*" } { $arec.Provider = "RimuHost NZ (nameserverz.com)" }
+        { $SOA -Like "*wix.com" } { $arec.Provider = "wix.com" }
+        { $SOA -Like "*wixdns.net*" } { $arec.Provider = "wix.com (wixdns.net)" }
       }
 
       if ($spfDNS -Like "*include:spf.nz.smxemail.com*all") { $arec.SPF_SMX = $true }
@@ -1042,7 +1047,7 @@ function Get-365Command {
     Function        Disconnect-365                                     0.0        toolsFor365
     Function        Enable-365SMXOutboundConnector                     0.0        toolsFor365
     Function        Get-365Admins                                      0.0        toolsFor365
-    Function        Get-365Commands                                    0.0        toolsFor365
+    Function        Get-365Command                                     0.0        toolsFor365
     Function        Get-365DNSInfo                                     0.0        toolsFor365
     Function        Get-365Domains                                     0.0        toolsFor365
     Function        Get-365licenses                                    0.0        toolsFor365
@@ -1054,7 +1059,8 @@ function Get-365Command {
     Function        New-365SMXInboundConnector                         0.0        toolsFor365
     Function        New-365SMXOutboundConnector                        0.0        toolsFor365
     Function        Remove-365SMXRuleConnectionFIlter                  0.0        toolsFor365
-    Function        Resolve-DNSSummary                                 0.0        toolsFor365    
+    Function        Resolve-DNSSummary                                 0.0        toolsFor365
+    Function        Set-ManagedMailBoxMessageSentCopy                  0.0        toolsFor365    
     "
 
  }

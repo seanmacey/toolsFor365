@@ -47,11 +47,7 @@ function Get-365DNSInfo {
     [string[]]$Domain 
   )
   begin {
-    Connect-365
-    # if (!(get-365Whoami -checkIfSignedInTo Exchange)) {
-    #   write-host "You need to Connect-ExchangeOnline  before you can get details about M365 based DKIM configuration" -ForegroundColor Red
-    #   Connect-JustToExchange -UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
-    # }
+    Connect-365 -SilentifAlreadyConnected
     Connect-JustToExchange
   }
 
@@ -70,25 +66,13 @@ function Get-365DNSInfo {
     foreach ($adomain in $domains) {
       $domainid = $adomain.id
       $ConnfiguredForMail = $adomain.supportedServices -Contains "Email"
-
       $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
       $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
       $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
       $Autodiscover = ($DNSrecs | Where-Object { ($_.recordType -eq "CNAME") -and ($_.AdditionalProperties.canonicalName -like "autodiscover.*") }).AdditionalProperties.canonicalName     # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
-      # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
-
-      # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
-      # $DKIMsmxinDNS2 = (Resolve-DnsName -Name smx2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-      # $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-      # $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue)
-    
       [string]$M365DKIM = (Get-DkimSigningConfig -Identity $domainid -ErrorAction SilentlyContinue ).Enabled
-
       $resolvedDNS = Resolve-DNSSummary -Domain $domainid
-
       $AutoDiscover365 = [bool]($Autodiscover -and $resolvedDNS.AutoDiscover )
-
-
       if (!$M365DKIM) { $M365DKIM = "Not yet configured: $domainid is not configured for DKIM" }
 
       $arec = [PSCustomObject]@{
@@ -105,10 +89,6 @@ function Get-365DNSInfo {
         DNS_DKIM_M365        = $resolvedDNS.DKIM_365
 
       }
-      # if ($DKIMsmxinDNS1  ) { $arec.DNS_DKIM_SMX_1 = "$($DKIMsmxinDNS1.Name),  $($DKIMsmxinDNS1.NameHost)" }
-      # if ($DKIMsmxinDNS2  ) { $arec.DNS_DKIM_SMX_2 = "$($DKIMsmxinDNS2.Name),  $($DKIMsmxinDNS2.NameHost)" }
-      # if ($DKIMM365inDNS1 ) { $arec.DNS_DKIM_M365_1 = "$($DKIMM365inDNS1.Name),  $($DKIMM365inDNS1.NameHost)" }
-      # if ($DKIMM365inDNS2 ) { $arec.DNS_DKIM_M365_2 = "$($DKIMM365inDNS2.Name),  $($DKIMM365inDNS2.NameHost)" }
       $arec
     }
   }
@@ -147,15 +127,12 @@ function Resolve-DNSSummary {
   begin {}
   Process {
     foreach ($adomain in $Domain) {
-
-  
       $SOA = (Resolve-DnsName -Name $adomain -Type SOA -ErrorAction SilentlyContinue).PrimaryServer
       $spfDNS = (Resolve-DnsName -Name $adomain -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
       $MxinDNS = (Resolve-DnsName -Name $adomain -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $adomain).NameExchange -join ", " 
       $dnsroot = (Resolve-DnsName -Name $adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
       $www = (Resolve-DnsName -Name www.$adomain -ErrorAction SilentlyContinue | where-object Name -eq $adomain).IP4Address -join ", " 
       $Autodiscover = (Resolve-DnsName -Name autodiscover.$adomain -Type CNAME -ErrorAction SilentlyContinue).NameHost
-
 
       $arec = [PSCustomObject]@{
         Name         = $adomain
@@ -193,7 +170,6 @@ function Resolve-DNSSummary {
         # $arec.DKIM_SMX = @($DKIMsmxinDNS1,$DKIMsmxinDNS2) |ConvertTo-Json -Compress
         $arec.DKIM_SMX = "$($DKIMsmxinDNS1.NameHost), $($DKIMsmxinDNS2.nameHost)"
       }
-
       $DKIMM365inDNS1 = (Resolve-DnsName -Name selector1._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
       $DKIMM365inDNS2 = (Resolve-DnsName -Name selector2._domainkey.$adomain -Type CNAME -ErrorAction SilentlyContinue) | Select-Object  NameHost
       if ($DKIMM365inDNS1 -or $DKIMM365inDNS2) {
@@ -229,11 +205,8 @@ Get-365licenses
 #>
 function  Get-365licenses {
   [CmdletBinding()]
-  param (
-       
-  )
+  param (  )
   Connect-365 -SilentifAlreadyConnected
-
 
   $lic = Get-MgSubscribedSku | Where-Object { ($_.AppliesTo -eq "User") -and ($_.CapabilityStatus -eq "Enabled") } | Select-Object SkuPartNumber, @{n = "Prepaid"; e = { $_.prepaidUNits.Enabled } }, ConsumedUnits, SkuId
   foreach ($l in $lic) {
@@ -567,7 +540,7 @@ function Get-365Domains {
   param (
     [switch]$EmailEnabled
   )
-  Connect-365 
+  Connect-365 -SilentifAlreadyConnected
   #get list of domains in M365
   $domains = get-mgdomain | Select-Object id, isdefault, isverified, supportedServices
   if ($EmailEnabled) {
@@ -639,7 +612,7 @@ connects to MgGraph
 #>
 function Disconnect-365 {
   disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-  if (get-365Whoami -checkIfSignedInTo Exchange) { Disconnect-ExchangeOnline }
+  if (get-365Whoami -checkIfSignedInTo Exchange) { Disconnect-ExchangeOnline -Confirm:$false |Out-Null  }
 }
 
 
@@ -656,7 +629,7 @@ Function Get-365Admins {
   )
 
   begin {
-    Connect-365 
+    Connect-365 -SilentifAlreadyConnected
   }
   process {
 
@@ -706,8 +679,7 @@ Function Get-365UserMFAMethods {
     [string[]] $userId
   )
   begin {
-    Connect-365
-
+    Connect-365 -SilentifAlreadyConnected
   }
   process {
     # Get MFA details for each user
@@ -833,7 +805,7 @@ function Connect-JustToExchange {
   }
 
   if (($isSignedin -ne $Identity) -and $Identity) {
-    Disconnect-ExchangeOnline 
+    Disconnect-ExchangeOnline -Confirm:$false |Out-Null
     $isSIgnedin = $null
   }
   
@@ -851,7 +823,7 @@ function Connect-JustToExchange {
         Write-Host "ExchangeOnlineManageManagement module is only required if you want to see which domains are configured for DKIM." -ForegroundColor Black -BackgroundColor Yellow
       } 
     }
-    Connect-ExchangeOnline -UserPrincipalName $Identity
+    Connect-ExchangeOnline -UserPrincipalName $Identity -ShowBanner:$false 
   }
 }
 
@@ -876,7 +848,7 @@ An example
 function New-365SMXInboundConnector {
   [CmdletBinding()]
   param ()
-  connect-365
+  connect-365 -SilentifAlreadyConnected
   Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
   Remove-365SMXRuleConnectionFIlter
@@ -916,7 +888,7 @@ function New-365SMXOutboundConnector {
     [ValidateSet("NZ", "AU")]
     [string]$Country = "NZ"
   )
-  connect-365
+  connect-365 -SilentifAlreadyConnected
   #connect-JustToExchange
   Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
@@ -959,7 +931,7 @@ An example
 function Enable-365SMXOutboundConnector {
   [CmdletBinding()]
   param ()
-  connect-365
+  connect-365 -SilentifAlreadyConnected
   #connect-JustToExchange
   Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 
@@ -996,7 +968,7 @@ Disable-365SMXOutboundConnector
 function Disable-365SMXOutboundConnector {
   [CmdletBinding()]
   param ()
-  connect-365
+  connect-365 -SilentifAlreadyConnected
   #connect-JustToExchange
   Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
 

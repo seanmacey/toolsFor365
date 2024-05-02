@@ -74,7 +74,7 @@ function Get-365DNSInfo {
       $DNSrecs = Get-MgDomainServiceConfigurationRecord -DomainId $domainid
       $spfs = ($DNSrecs | Where-Object recordType -eq "Txt"  | Select-Object -ExpandProperty AdditionalProperties -ErrorAction SilentlyContinue).text -join ", "
       $MXrecs = ($DNSrecs | Where-Object recordType -eq "Mx").AdditionalProperties.mailExchange -join ", "
-      $Autodiscover = ($DNSrecs | Where-Object {($_.recordType -eq "CNAME") -and ($_.AdditionalProperties.canonicalName -like "autodiscover.*")}).AdditionalProperties.canonicalName     # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
+      $Autodiscover = ($DNSrecs | Where-Object { ($_.recordType -eq "CNAME") -and ($_.AdditionalProperties.canonicalName -like "autodiscover.*") }).AdditionalProperties.canonicalName     # $spfDNS = (Resolve-DnsName -Name $domainid -Type TXT -ErrorAction SilentlyContinue | Where-Object { $_.Strings -Like "*v=spf1*" }).strings -join ", "
       # $MxinDNS = (Resolve-DnsName -Name $domainid -Type MX -ErrorAction SilentlyContinue | where-object Name -eq $domainid).NameExchange -join ", " 
 
       # $DKIMsmxinDNS1 = (Resolve-DnsName -Name smx1._domainkey.$domainid -Type CNAME -ErrorAction SilentlyContinue) 
@@ -95,7 +95,7 @@ function Get-365DNSInfo {
         Name                 = $domainid
         M365_MailEnabled     = $ConnfiguredForMail
         SOA                  = $resolvedDNS.Provider
-        Autodiscover365 = $AutoDiscover365
+        Autodiscover365      = $AutoDiscover365
         M365_spf             = $spfs
         DNS_spf              = $resolvedDNS.SPF #$spfDNS
         M365_mx              = $MXrecs
@@ -158,17 +158,17 @@ function Resolve-DNSSummary {
 
 
       $arec = [PSCustomObject]@{
-        Name     = $adomain
-        Home     = $dnsroot
-        www      = $www
-        Provider = $SOA
+        Name         = $adomain
+        Home         = $dnsroot
+        www          = $www
+        Provider     = $SOA
         AutoDiscover = $Autodiscover 
-        MX       = $MxinDNS
-        DKIM_SMX = ""
-        DKIM_365 = ""
-        SPF_SMX  = ""
-        SPF_365  = ""
-        SPF      = $spfDNS
+        MX           = $MxinDNS
+        DKIM_SMX     = ""
+        DKIM_365     = ""
+        SPF_SMX      = ""
+        SPF_365      = ""
+        SPF          = $spfDNS
       }
 
       switch ($SOA) {
@@ -281,7 +281,7 @@ function  Get-365user {
     [alias('Name')]
     [string[]]$userPrincipalName,
 
-#    [Parameter(Mandatory = $true, ParameterSetName = 'id', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
+    #    [Parameter(Mandatory = $true, ParameterSetName = 'id', ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName)]
     [alias('id')]
     [string]$userid,
@@ -295,7 +295,7 @@ function  Get-365user {
   begin {
     Connect-365 -SilentifAlreadyConnected
     if ($showMailBox) {
-     # Connect-JustToExchange
+      # Connect-JustToExchange
       Connect-JustToExchange #-UserPrincipalName (get-365Whoami -checkIfSignedInTo MgGraph)
     }
   }
@@ -325,8 +325,8 @@ function  Get-365user {
     if ($basicInfoOnly) {
       $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,accountEnabled,onPremisesSamAccountName,userType'
       $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
-      if ($result){
-        if ($EnablebUsersOnly -and $result.value) {$result.value = $result.value |Where-Object accountEnabled -eq "True"}
+      if ($result) {
+        if ($EnablebUsersOnly -and $result.value) { $result.value = $result.value | Where-Object accountEnabled -eq "True" }
         $result.value
       }
       
@@ -334,7 +334,7 @@ function  Get-365user {
     }
 
     # $ConnectedtoExchange = (get-365Whoami -DontElaborate).ExhangeOnline
-  #  $needsB2C = $null
+    #  $needsB2C = $null
     $basicpoll = 'https://graph.microsoft.com/v1.0/users?$select=id,displayName,userPrincipalName,Mail,proxyAddresses,licenseAssignmentStates,accountEnabled,lastPasswordChangeDateTime,onPremisesSyncEnabled,onPremisesDomainName,onPremisesDistinguishedName,onPremisesSamAccountName,userType'
         
     try {
@@ -343,19 +343,19 @@ function  Get-365user {
 
     }
     catch {
-   #   $er = $error[0]
-    #  $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
-     # if ($needsB2C) {
+      #   $er = $error[0]
+      #  $needsB2C = $er.ErrorDetails -like "*tenant is neither B2C nor has premium license*"
+      # if ($needsB2C) {
       #  write-host "HELL $basicpoll$filterfor"
-        $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
-        $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
-        $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "Can not get signInActivity, since tenant is neither B2C or has premium license"
-     # }
+      $result = Invoke-MgGraphRequest -Method GET "$basicpoll$filterfor" -OutputType PSObject
+      $result.value | Add-Member -NotePropertyName signInActivity -NotePropertyValue ""
+      $result.value | Add-Member -NotePropertyName get_errors -NotePropertyValue "Can not get signInActivity, since tenant is neither B2C or has premium license"
+      # }
     }
 
     if ($result) {
       $users = $result.value
-      if ($EnablebUsersOnly -and $users) {$users = $users|Where-Object accountEnabled -eq "True"}
+      if ($EnablebUsersOnly -and $users) { $users = $users | Where-Object accountEnabled -eq "True" }
       if ($showMailBox) {
         $users | Add-Member -NotePropertyName "MailSize" -NotePropertyValue ""
         $users | Add-Member -NotePropertyName "MailSizeLimit" -NotePropertyValue ""
@@ -410,11 +410,11 @@ function  Get-365user {
         $user
       }
     }
-      else {
-        write-host "Get-365user: Did not find any user entries based on $filterfor"
-      }
+    else {
+      write-host "Get-365user: Did not find any user entries based on $filterfor"
+    }
 
-      # $users
+    # $users
     
   }
   end {}
@@ -520,13 +520,13 @@ function Get-365Whoami {
 
 
   if ($checkIfSignedInTo -eq "AzureAD" ) {
-  try {
-    Write-Verbose "about to check login for AZureAD"
+    try {
+      Write-Verbose "about to check login for AZureAD"
 
-    $result = Get-AzureADCurrentSessionInfo -ErrorAction SilentlyContinue
-    $uAzure = $result.Account.ID
-  }
-  catch { }
+      $result = Get-AzureADCurrentSessionInfo -ErrorAction SilentlyContinue
+      $uAzure = $result.Account.ID
+    }
+    catch { }
 
     return $uAzure
   }
@@ -565,14 +565,13 @@ this is a very simple summary of get-mgdomain
 function Get-365Domains {
   [CmdletBinding()]
   param (
-        [switch]$EmailEnabled
+    [switch]$EmailEnabled
   )
   Connect-365 
   #get list of domains in M365
   $domains = get-mgdomain | Select-Object id, isdefault, isverified, supportedServices
-  if ($EmailEnabled)
-  {
-    $domains = $domains |Where-Object supportedServices -contains "Email"
+  if ($EmailEnabled) {
+    $domains = $domains | Where-Object supportedServices -contains "Email"
   }
   return $domains
 
@@ -661,25 +660,24 @@ Function Get-365Admins {
   }
   process {
 
-      $adminRoies = Get-MgDirectoryRole | Select-Object DisplayName, Id, Description
+    $adminRoies = Get-MgDirectoryRole | Select-Object DisplayName, Id, Description
     ForEach ($role in $adminRoies) {    
       $users = Get-MgDirectoryRoleMember -DirectoryRoleId $role.id | Where-Object { $_.AdditionalProperties."@odata.type" -eq "#microsoft.graph.user" } | Get-365user -basicInfoOnly -EnablebUsersOnly
       if ($users) {
         foreach ($user in $users) {
-          if ($user)
-          {
-          $result = [PSCustomObject]@{
-           Role              = $role.DisplayName
-           userPrincipalName = $user.UserPrincipalName
-           userDisplayname    = $user.DisplayName
-           Descripion        = $role.Description
-           # roleid            = $role.Id
+          if ($user) {
+            $result = [PSCustomObject]@{
+              Role              = $role.DisplayName
+              userPrincipalName = $user.UserPrincipalName
+              userDisplayname   = $user.DisplayName
+              Descripion        = $role.Description
+              # roleid            = $role.Id
+            }
+            $result
           }
-          $result
-        }
         }
       }
-     }
+    }
      
   }
 }
@@ -828,16 +826,15 @@ function Connect-JustToExchange {
     # Parameter help description
     [string]$Identity
   )
-   $isSignedin = get-365Whoami -checkIfSignedInTo Exchange
+  $isSignedin = get-365Whoami -checkIfSignedInTo Exchange
  
-   if (!$Identity) {
+  if (!$Identity) {
     $Identity = get-365Whoami -checkIfSignedInTo MgGraph
   }
 
-  if (($isSignedin -ne $Identity) -and $Identity)
-  {
-     Disconnect-ExchangeOnline 
-     $isSIgnedin = $null
+  if (($isSignedin -ne $Identity) -and $Identity) {
+    Disconnect-ExchangeOnline 
+    $isSIgnedin = $null
   }
   
   if (!$isSIgnedin) {
@@ -884,8 +881,9 @@ function New-365SMXInboundConnector {
 
   Remove-365SMXRuleConnectionFIlter
   New-365RuleOnlyAcceptInboundMailFromSMX 
-  $prev = Get-InboundConnector |Where-Object SenderIPAddresses -like "*113.197.64.0*"
-  if ($prev) {#.SenderIPAddresses -contains "113.197.67.0/24") {
+  $prev = Get-InboundConnector | Where-Object SenderIPAddresses -like "*113.197.64.0*"
+  if ($prev) {
+    #.SenderIPAddresses -contains "113.197.67.0/24") {
     write-host "An inbound Connector for SMX already exits, If you wish to recreate it first delete '$($prev.Identity)'"
     return
   }
@@ -1034,11 +1032,11 @@ function Get-365Command {
   param (
     
   )
-     $c = Get-Command -Module toolsFor365
-    if ($c) {$c ; return}
-    write-host "Get-365Command: will only show you the Full list of commands when toolFor365 is installed as a Module (*.psm1)"
-    write-host "since you ran this script as . ./toolsFor365.ps1 function the list below is manual and may be inaccurate"
-    write-Host "
+  $c = Get-Command -Module toolsFor365
+  if ($c) { $c ; return }
+  write-host "Get-365Command: will only show you the Full list of commands when toolFor365 is installed as a Module (*.psm1)"
+  write-host "since you ran this script as . ./toolsFor365.ps1 function the list below is manual and may be inaccurate"
+  write-Host "
     CommandType     Name                                               Version    Source
     -----------     ----                                               -------    ------
     Function        Connect-365                                        0.0        toolsFor365
@@ -1060,10 +1058,10 @@ function Get-365Command {
     Function        New-365SMXOutboundConnector                        0.0        toolsFor365
     Function        Remove-365SMXRuleConnectionFIlter                  0.0        toolsFor365
     Function        Resolve-DNSSummary                                 0.0        toolsFor365
-    Function        Set-ManagedMailBoxMessageSentCopy                  0.0        toolsFor365    
+    Function        Set-MailBoxMessageSentAsCopy                       0.0        toolsFor365    
     "
 
- }
+}
 
 <#
 .SYNOPSIS
@@ -1081,29 +1079,27 @@ Remove-365SMXRuleConnectionFIlter
 function Remove-365SMXRuleConnectionFIlter {
   [CmdletBinding()]
   param (
-   )
-   $senderIps = "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24","113.197.64.0/22","203.84.134.0/25"
-   $cfilter =  Get-HostedConnectionFilterPolicy
+  )
+  $senderIps = "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24", "113.197.64.0/22", "203.84.134.0/25"
+  $cfilter = Get-HostedConnectionFilterPolicy
 
-   $IPAllowList = $cfilter.IPAllowList
+  $IPAllowList = $cfilter.IPAllowList
   $newIpFilter = @()
   $wasFound = ""
-   foreach ($anAllow in  $IPAllowList)
-   {
+  foreach ($anAllow in  $IPAllowList) {
 
-    if (!($anAllow -in $senderIps))
-    {
-    $newIpFilter += $anAllow
-    $wasFound
+    if (!($anAllow -in $senderIps)) {
+      $newIpFilter += $anAllow
+      $wasFound
     }
-   }
-$newIpFilter
-if ($wasFound){
-  write-host "365 Hosted Connection Filter contained IP ranges for SMX - these have been removed"
-  write-host "Reaason: To ensure SMX 365 & Office 365 works in a dual filtering mode, you must remove the SMX IP addresses,"
-  write-Host "since leaving the connection filter IPs in place will bypass EOP scanning for messages originating from SMX. "
-}
-    $cfilter | set-HostedConnectionFilterPolicy -IPAllowList $newIpFilter
+  }
+  $newIpFilter
+  if ($wasFound) {
+    write-host "365 Hosted Connection Filter contained IP ranges for SMX - these have been removed"
+    write-host "Reaason: To ensure SMX 365 & Office 365 works in a dual filtering mode, you must remove the SMX IP addresses,"
+    write-Host "since leaving the connection filter IPs in place will bypass EOP scanning for messages originating from SMX. "
+  }
+  $cfilter | set-HostedConnectionFilterPolicy -IPAllowList $newIpFilter
   
 }
 
@@ -1127,16 +1123,16 @@ New-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
 #>
 function New-365RuleOnlyAcceptInboundMailFromSMX {
 
-   param(
+  param(
     [switch]$DontElaborate
-   )
+  )
 
-   $Rules = Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
-      if ($rules) {if (!$DontElaborate) {Write-Host "The MAIL transport rule to Prevent email delivery from any source aother than SMX already exists"}}
-   else {
-    New-TransportRule -Name "Only accept inbound mail from SMX" -ExceptIfSenderIpRanges "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24" -SetAuditSeverity DoNotAudit -ExceptIfMessageTypeMatches Calendaring -FromScope NotInOrganization -Enabled $false -DeleteMessage $true |Out-Null
-   }
-   Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate:$DontElaborate
+  $Rules = Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
+  if ($rules) { if (!$DontElaborate) { Write-Host "The MAIL transport rule to Prevent email delivery from any source aother than SMX already exists" } }
+  else {
+    New-TransportRule -Name "Only accept inbound mail from SMX" -ExceptIfSenderIpRanges "113.197.64.0/24", "113.197.65.0/24", "113.197.66.0/24", "113.197.67.0/24", "203.84.134.0/24", "203.84.135.0/24" -SetAuditSeverity DoNotAudit -ExceptIfMessageTypeMatches Calendaring -FromScope NotInOrganization -Enabled $false -DeleteMessage $true | Out-Null
+  }
+  Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate:$DontElaborate
 }
 
 <#
@@ -1156,11 +1152,11 @@ if used then the CMDLet will provide feedback (other than any rule(s) if found)
  Get-365RuleOnlyAcceptInboundMailFromSMX -DontElaborate
 #>
 function Get-365RuleOnlyAcceptInboundMailFromSMX {
- # [CmdletBinding()]
+  # [CmdletBinding()]
   param(
-   [switch]$DontElaborate
+    [switch]$DontElaborate
   )
-   $rules = Get-TransportRule  |Where-Object {($_.FromScope -like "NotInOrganization") -and ($_.Description -like "*Delete the message without notifying the recipient*113.197.64.0*" )}
+  $rules = Get-TransportRule  | Where-Object { ($_.FromScope -like "NotInOrganization") -and ($_.Description -like "*Delete the message without notifying the recipient*113.197.64.0*" ) }
 
   if ($DontElaborate -ne $True) {
     write-host "Rules were found, If enabled they will prevent mail from from ANY SOURCE other than SMX" -ForegroundColor Yellow
@@ -1174,50 +1170,62 @@ function Get-365RuleOnlyAcceptInboundMailFromSMX {
   $rules
 }
 
-function Set-ManagedMailBoxMessageSentCopy {
+
+<#
+.SYNOPSIS
+set's Mailbox that is the target of a SendAs or Send on Behalf
+and either keep a copy of the mail being sent in it's own sent items
+
+.DESCRIPTION
+by default 365 mailboxes do not keep a duplicate copy of an email which anotgher mailbox sent on behalf (or SendAs)
+this CMD changes that behaviour
+set's Mailbox that is the target of a SerdAs or Send on Behalf
+and either keep a copy of the mail being sent in it's own sent items
+
+.PARAMETER UserPrincipalName
+the Mail , or mailoboxes that the settinsg applies to 
+NOt applicable if the AllMailBoxes paramater is used
+
+.PARAMETER AllMailboxes
+ensure that all User or Shared mailboxes have their settings changed
+
+.PARAMETER KeepSentCopy
+If True, this will ensure the target Mialbox keeps a copy of the sent item (as well are the originator)
+If False, only the mailbox that originates the SendAs or SendOnBehalf will keep a copy of the email in its sent items
+
+.EXAMPLE
+Set-MailBoxMessageSentAsCopy -UserPrincipalName sean.macey@imatec.co.nz 
+
+.NOTES
+General notes
+#>
+function Set-MailBoxMessageSentAsCopy {
   #this function is a work in progress
-  [CmdletBinding(DefaultParameterSetName="UserPrincipalname")]
+  [CmdletBinding(DefaultParameterSetName = "UserPrincipalname")]
   param (
-    [Parameter(ParameterSetName="UserPrincipalname",ValueFromPipeline,ValueFromPipelineByPropertyName)]
+    [Parameter(ParameterSetName = "UserPrincipalname", ValueFromPipeline, ValueFromPipelineByPropertyName)]
     [Alias("Identity")]
     [string[]]$UserPrincipalName,
-    # [Parameter(ParameterSetName="mailbox",ValueFromPipeline)]
-    # [object[]]$mailbox,
-    #[Parameter(Mandatory=$true)]
+    [Parameter(ParameterSetName = "AllMailboxes")]
+    [switch]$AllMailboxes,
     [bool]$KeepSentCopy = $true
   )
 
-  begin
-  {
+  begin {
     Connect-JustToExchange
-        if (!$UserPrincipalName) #)-and !$mailbox)
-    {
-      write-verbose " Connect-JustToExchange !UserPrincipalName given"
-      (Get-EXOMailbox).UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+    if ($AllMailboxes) {
+      write-Host "Set all user/shared mailboxes to keep SendAs sent item copy = $KeepSentCopy"
+      $mailboxesUPNs = Get-EXOMailbox -Filter "(RecipientTypeDetails -eq 'SharedMailbox') -or (RecipientTypeDetails -eq 'UserMailbox') "
+      $mailboxesUPNs.UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
       return
     }
-    # if ($mailbox)
-    # {
-    #   Write-Host "(!$UserPrincipalName -and !$mailbox)"
-    #   ($mailbox.UserPrincipalName) | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
-    #   return
-    # }
   }
-  process
-  {
-    # if ($UserPrincipalName)
-    #  {
-    #   Write-Host("($UserPrincipalName)")
-     $UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
-  #}
-}
+  process {
+    if ($UserPrincipalName) {
+      $UserPrincipalName | Set-Mailbox  -MessageCopyForSendOnBehalfEnabled $true -MessageCopyForSentAsEnabled $true
+      write-host "Set mailbox $UserPrincipalName to keep SendAs sent item copy = $KeepSentCopy"
+    }
+  }
 }
 
 Get-365Command
-
-
-
-
-
-
-

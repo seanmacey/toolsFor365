@@ -11,6 +11,8 @@ either load the script directly using. .\toolsFor365
  - or rename the script to <b>toolsFor365.psm1</b> and save it as a module within your PowerShell modules in a new folder also called <b>toolsFor365</b>. then the functions within the script will work as CMDLETS
 Only toolsFor365.ps1 is important: the other files in this repo are just notes or workings
 
+- you may need to first: Install-Module -Name ExchangeOnlineManagement
+
 Commands can be listed using <b>Get-365Command</b>
 
 <code>
